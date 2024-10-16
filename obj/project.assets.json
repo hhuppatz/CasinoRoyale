@@ -244,11 +244,11 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "C:\\Users\\harry\\Personal Projects\\CSharpFirstPerson\\CSharpFirstPerson.csproj",
+      "projectUniqueName": "C:\\Users\\harry\\Personal Projects\\CasinoRoyale\\CSharpFirstPerson.csproj",
       "projectName": "CSharpFirstPerson",
-      "projectPath": "C:\\Users\\harry\\Personal Projects\\CSharpFirstPerson\\CSharpFirstPerson.csproj",
+      "projectPath": "C:\\Users\\harry\\Personal Projects\\CasinoRoyale\\CSharpFirstPerson.csproj",
       "packagesPath": "C:\\Users\\harry\\.nuget\\packages\\",
-      "outputPath": "C:\\Users\\harry\\Personal Projects\\CSharpFirstPerson\\obj\\",
+      "outputPath": "C:\\Users\\harry\\Personal Projects\\CasinoRoyale\\obj\\",
       "projectStyle": "PackageReference",
       "fallbackFolders": [
         "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"

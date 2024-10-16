@@ -1,3 +1,3 @@
 Source File,Dest File,Processor Type,Content Type,Source File Size,Dest File Size,Build Seconds
-"C:/Users/harry/Personal Projects/CSharpFirstPerson/Content/ball.png","C:/Users/harry/Personal Projects/CSharpFirstPerson/Content/bin/DesktopGL/Content/ball.xnb","TextureProcessor","Texture2DContent",8368,16469,0.171204
-"C:/Users/harry/Personal Projects/CSharpFirstPerson/Content/CasinoMachine1.png","C:/Users/harry/Personal Projects/CSharpFirstPerson/Content/bin/DesktopGL/Content/CasinoMachine1.xnb","TextureProcessor","Texture2DContent",774,16469,0.1000042
+"C:/Users/harry/Personal Projects/CasinoRoyale/Content/ball.png","C:/Users/harry/Personal Projects/CasinoRoyale/Content/bin/DesktopGL/Content/ball.xnb","TextureProcessor","Texture2DContent",8368,16469,0.0829564
+"C:/Users/harry/Personal Projects/CasinoRoyale/Content/CasinoMachine1.png","C:/Users/harry/Personal Projects/CasinoRoyale/Content/bin/DesktopGL/Content/CasinoMachine1.xnb","TextureProcessor","Texture2DContent",774,16469,0.003556

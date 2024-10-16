@@ -1,12 +1,13 @@
 ﻿using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
+using System.Collections.Generic;
 
 namespace CSharpFirstPerson;
-
 public class Game1 : Game
 {
-    Texture2D ballTexture;
+    Texture2D casinoMachineTexture;
+    CasinoMachineFactory casinoMachineFactory;
     private GraphicsDeviceManager _graphics;
     private SpriteBatch _spriteBatch;
 
@@ -29,7 +30,9 @@ public class Game1 : Game
     {
         _spriteBatch = new SpriteBatch(GraphicsDevice);
 
-        ballTexture = Content.Load<Texture2D>("CasinoMachine1");
+        casinoMachineTexture = Content.Load<Texture2D>("CasinoMachine1");
+        casinoMachineFactory = new CasinoMachineFactory(casinoMachineTexture);
+        casinoMachineFactory.SpawnCasinoMachine();
         // TODO: use this.Content to load your game content here
     }
 
@@ -49,7 +52,10 @@ public class Game1 : Game
 
         // TODO: Add your drawing code here
         _spriteBatch.Begin();
-        _spriteBatch.Draw(ballTexture, new Vector2(0,0), Color.Wheat);
+        foreach (CasinoMachine casinoMachine in casinoMachineFactory.GetCasinoMachines())
+        {
+            _spriteBatch.Draw(casinoMachine.GetTex(), casinoMachine.GetCoords(), Color.White);
+        }
         _spriteBatch.End();
 
         base.Draw(gameTime);
