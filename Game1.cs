@@ -6,6 +6,7 @@ namespace CSharpFirstPerson;
 
 public class Game1 : Game
 {
+    Texture2D ballTexture;
     private GraphicsDeviceManager _graphics;
     private SpriteBatch _spriteBatch;
 
@@ -13,9 +14,10 @@ public class Game1 : Game
     {
         _graphics = new GraphicsDeviceManager(this);
         Content.RootDirectory = "Content";
-        IsMouseVisible = true;
+        IsMouseVisible = false;
     }
 
+    // for loading non-graphic related content
     protected override void Initialize()
     {
         // TODO: Add your initialization logic here
@@ -27,6 +29,7 @@ public class Game1 : Game
     {
         _spriteBatch = new SpriteBatch(GraphicsDevice);
 
+        ballTexture = Content.Load<Texture2D>("CasinoMachine1");
         // TODO: use this.Content to load your game content here
     }
 
@@ -45,6 +48,9 @@ public class Game1 : Game
         GraphicsDevice.Clear(Color.CornflowerBlue);
 
         // TODO: Add your drawing code here
+        _spriteBatch.Begin();
+        _spriteBatch.Draw(ballTexture, new Vector2(0,0), Color.Wheat);
+        _spriteBatch.End();
 
         base.Draw(gameTime);
     }
