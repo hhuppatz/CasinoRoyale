@@ -53,3 +53,4 @@ C:\Users\harry\Personal Projects\CasinoRoyale\obj\Debug\net8.0\refint\CSharpFirs
 C:\Users\harry\Personal Projects\CasinoRoyale\obj\Debug\net8.0\CSharpFirstPerson.pdb
 C:\Users\harry\Personal Projects\CasinoRoyale\obj\Debug\net8.0\CSharpFirstPerson.genruntimeconfig.cache
 C:\Users\harry\Personal Projects\CasinoRoyale\obj\Debug\net8.0\ref\CSharpFirstPerson.dll
+C:\Users\harry\Personal Projects\CasinoRoyale\bin\Debug\net8.0\Content\CasinoFloor1.xnb

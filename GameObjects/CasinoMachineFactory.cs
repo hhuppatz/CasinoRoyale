@@ -1,6 +1,5 @@
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
-using Microsoft.Xna.Framework.Input;
 using System.Collections.Generic;
 
 public class CasinoMachineFactory
@@ -15,7 +14,7 @@ public class CasinoMachineFactory
 
     public void SpawnCasinoMachine()
     {
-        machines.Add(new CasinoMachine(machineTex, new Vector2(100,100)));
+        machines.Add(new CasinoMachine(machineTex, new Vector2(200,0)));
     }
 
     public List<CasinoMachine> GetCasinoMachines()

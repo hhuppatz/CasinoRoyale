@@ -5,9 +5,11 @@
   <Config />
   <SourceFiles>
     <File>C:/Users/harry/Personal Projects/CasinoRoyale/Content/ball.png</File>
+    <File>C:/Users/harry/Personal Projects/CasinoRoyale/Content/CasinoFloor1.png</File>
     <File>C:/Users/harry/Personal Projects/CasinoRoyale/Content/CasinoMachine1.png</File>
   </SourceFiles>
   <DestFiles>
+    <File xsi:nil="true" />
     <File xsi:nil="true" />
     <File xsi:nil="true" />
   </DestFiles>
