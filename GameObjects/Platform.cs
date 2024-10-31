@@ -1,7 +1,6 @@
 using System;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
-using Microsoft.Xna.Framework.Input;
 
 public class Platform
 {
@@ -24,5 +23,20 @@ public class Platform
     public Vector2 GetRCoords()
     {
         return R;
+    }
+
+    public int GetWidth()
+    {
+        return Math.Abs((int)L.X - (int)R.X);
+    }
+
+    public Texture2D GetTex()
+    {
+        return tex;
+    }
+
+    public Vector2 GetCoords()
+    {
+        return (R + L)/2;
     }
 }

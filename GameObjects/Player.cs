@@ -6,20 +6,16 @@ public class Player
 {
     private readonly Texture2D tex;
     private readonly Vector2 maxBaseVelocity;
-    private readonly Vector2 maxBaseAcceleration;
     private Vector2 coords;
     private Vector2 velocity;
-    private Vector2 acceleration;
 
-    public Player(Texture2D tex, Vector2 coords, Vector2 maxBaseVelocity, Vector2 maxBaseAcceleration)
+    public Player(Texture2D tex, Vector2 coords, Vector2 maxBaseVelocity)
     {
         this.tex = tex;
         this.coords = coords;
         this.maxBaseVelocity = maxBaseVelocity;
-        this.maxBaseAcceleration = maxBaseAcceleration;
 
-        velocity = new Vector2(maxBaseVelocity.X, 0);
-        acceleration = maxBaseAcceleration;
+        velocity = maxBaseVelocity;
     }
 
     public Texture2D GetTex()
@@ -44,6 +40,16 @@ public class Player
         if (ks.IsKeyDown(Keys.D) || ks.IsKeyDown(Keys.Right))
         {
             coords = Vector2.Add(GetCoords(), new Vector2(velocity.X, 0) * deltaTime);
+        }
+
+        if (ks.IsKeyDown(Keys.W) || ks.IsKeyDown(Keys.Up))
+        {
+            coords = Vector2.Add(GetCoords(), new Vector2(0, -velocity.Y) * deltaTime);
+        }
+
+        if (ks.IsKeyDown(Keys.S) || ks.IsKeyDown(Keys.Down))
+        {
+            coords = Vector2.Add(GetCoords(), new Vector2(0, velocity.Y) * deltaTime);
         }
     }
 }

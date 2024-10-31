@@ -1,2 +1,2 @@
-﻿using var game = new CSharpFirstPerson.Game1();
+﻿using var game = new CSharpFirstPerson.Server();
 game.Run();
