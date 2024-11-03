@@ -1,15 +1,16 @@
+using LiteNetLib.Utils;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
-using Microsoft.Xna.Framework.Input;
 
 public class CasinoMachine
 {
     private readonly Texture2D tex;
-    private readonly Vector2 coords;
-    public CasinoMachine(Texture2D tex, Vector2 coords)
+    private CasinoMachineState machineState;
+    public CasinoMachine(uint machineNum, Texture2D tex, Vector2 coords)
     {
         this.tex = tex;
-        this.coords = coords;
+        machineState.coords = coords;
+        machineState.machineNum = machineNum;
     }
 
     public Texture2D GetTex()
@@ -19,6 +20,25 @@ public class CasinoMachine
 
     public Vector2 GetCoords()
     {
-        return coords;
+        return machineState.coords;
+    }
+
+    public CasinoMachineState GetState()
+    {
+        return machineState;
+    }
+}
+
+public struct CasinoMachineState : INetSerializable
+{
+    public uint machineNum;
+    public Vector2 coords;
+    public void Serialize(NetDataWriter writer) {
+        writer.Put(machineNum);
+        writer.Put(coords);
+    }
+    public void Deserialize(NetDataReader reader) {
+        machineNum = reader.GetUInt();
+        coords = reader.GetVector2();
     }
 }

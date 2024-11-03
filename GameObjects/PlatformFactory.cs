@@ -12,11 +12,11 @@ public class PlatformFactory
         rand = new Random();
     }
 
-    public Platform GeneratePlatform(Vector2 leftSide, int minLen, int maxLen)
+    public Platform GeneratePlatform(uint platNum, Vector2 leftSide, int minLen, int maxLen)
     {
         Vector2 L = new Vector2(leftSide.X, leftSide.Y);
         Vector2 R = new Vector2(L.X + (int)(rand.NextDouble() * (maxLen - minLen)) + minLen, L.Y);
 
-        return new Platform(platTex, L, R);
+        return new Platform(platNum, platTex, L, R);
     }
 }

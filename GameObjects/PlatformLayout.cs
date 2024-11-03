@@ -21,6 +21,7 @@ public static class PlatformLayout
     */
     public static List<Platform> GenerateStandardRandPlatLayout(Texture2D platTex, Rectangle gameArea, int minLen, int maxLen, int horizontalDistApart, int verticalDistApart, int platSpawnChance)
     {
+        uint platNum = 0;
         var rand = new Random();
         PlatformFactory platformFactory = new PlatformFactory(platTex);
         List<Platform> platforms = new List<Platform>();
@@ -35,8 +36,9 @@ public static class PlatformLayout
                 // Generate platform at current rectangle
                 if (rand.NextInt64(0, 100) < platSpawnChance)
                 {
-                    Platform platform = platformFactory.GeneratePlatform(new Vector2(j, i), minLen, maxLen);
+                    Platform platform = platformFactory.GeneratePlatform(platNum, new Vector2(j, i), minLen, maxLen);
                     platforms.Add(platform);
+                    platNum++;
                     j += platform.GetWidth() + horizontalDistApart;
                 }
                 else

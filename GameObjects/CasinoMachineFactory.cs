@@ -1,24 +1,22 @@
+using System.Collections.Generic;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
-using System.Collections.Generic;
 
 public class CasinoMachineFactory
 {
     private readonly Texture2D machineTex;
-    private List<CasinoMachine> machines;
     public CasinoMachineFactory(Texture2D machineTex)
     {
         this.machineTex = machineTex;
-        machines = new List<CasinoMachine>();
     }
 
-    public void SpawnCasinoMachine()
+    public List<CasinoMachine> SpawnCasinoMachines()
     {
-        machines.Add(new CasinoMachine(machineTex, new Vector2(200,0)));
-    }
-
-    public List<CasinoMachine> GetCasinoMachines()
-    {
+        uint id = 0;
+        List<CasinoMachine> machines = new List<CasinoMachine>();
+        machines.Add(new CasinoMachine(id, machineTex, new Vector2(200,0)));
+        id++;
         return machines;
     }
+
 }

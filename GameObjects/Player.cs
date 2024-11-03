@@ -1,55 +1,61 @@
+using LiteNetLib;
+using LiteNetLib.Utils;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
-using Microsoft.Xna.Framework.Input;
 
-public class Player
+public class Player : GameEntity
 {
+    private NetPeer peer;
+    private PlayerState playerState;
     private readonly Texture2D tex;
-    private readonly Vector2 maxBaseVelocity;
-    private Vector2 coords;
-    private Vector2 velocity;
 
-    public Player(Texture2D tex, Vector2 coords, Vector2 maxBaseVelocity)
+    public Player(NetPeer peer, PlayerState playerState, Texture2D tex, Vector2 maxBaseVelocity)
+    : base(true, playerState.ges.coords, playerState.ges.velocity)
     {
+        this.peer = peer;
         this.tex = tex;
-        this.coords = coords;
-        this.maxBaseVelocity = maxBaseVelocity;
-
-        velocity = maxBaseVelocity;
+        this.playerState = playerState;
     }
 
+    // getters
+    public string GetUsername()
+    {
+        return playerState.username;
+    }
     public Texture2D GetTex()
     {
         return tex;
     }
 
-    public Vector2 GetCoords()
+    public PlayerState GetState()
     {
-        return coords;
+        return playerState;
     }
 
-    // Only use provided input KeyboardState to keep control of input
-    // exclusively in Game1.cs
-    public void Move(KeyboardState ks, float deltaTime)
+    public NetPeer GetPeer()
     {
-        if (ks.IsKeyDown(Keys.A) || ks.IsKeyDown(Keys.Left))
-        {
-            coords = Vector2.Add(GetCoords(), new Vector2(-velocity.X, 0) * deltaTime);
-        }
+        return peer;
+    }
 
-        if (ks.IsKeyDown(Keys.D) || ks.IsKeyDown(Keys.Right))
-        {
-            coords = Vector2.Add(GetCoords(), new Vector2(velocity.X, 0) * deltaTime);
-        }
+}
 
-        if (ks.IsKeyDown(Keys.W) || ks.IsKeyDown(Keys.Up))
-        {
-            coords = Vector2.Add(GetCoords(), new Vector2(0, -velocity.Y) * deltaTime);
-        }
+public struct PlayerState : INetSerializable
+{
+    public uint pid;
+    public string username;
+    public GameEntityState ges;
 
-        if (ks.IsKeyDown(Keys.S) || ks.IsKeyDown(Keys.Down))
-        {
-            coords = Vector2.Add(GetCoords(), new Vector2(0, velocity.Y) * deltaTime);
-        }
+    public void Serialize(NetDataWriter writer)
+    {
+        writer.Put(pid);
+        writer.Put(username);
+        writer.Put(ges);
+    }
+
+    public void Deserialize(NetDataReader reader)
+    {
+        pid = reader.GetUInt();
+        username = reader.GetString();
+        ges = reader.GetGES();
     }
 }

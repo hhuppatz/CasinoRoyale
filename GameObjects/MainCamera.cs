@@ -42,6 +42,11 @@ public sealed class MainCamera
         this.ratio = ratio;
     }
 
+    public void SetCoords(Vector2 vec)
+    {
+        coords = vec;
+    }
+
     public Vector2 GetCoords()
     {
         return coords;
