@@ -122,7 +122,14 @@ public class Server : Game, INetEventListener
             PlayerState[] player_states = new PlayerState[players.Count];
             for (int i = 0; i < players.Count; i++)
             {
-                player_states[i] = players.Values.ToArray()[i].GetState();
+                Console.WriteLine(players.Values.ToArray()[i].GetState().username);
+                PlayerState player_state = players.Values.ToArray()[i].GetState();
+                player_states[i] = new PlayerState{
+                    pid = player_state.pid,
+                    username = player_state.username,
+                    ges = player_state.ges
+                };
+                Console.WriteLine(player_state.ges.velocity);
             }
             CasinoMachineState[] casino_machine_states = new CasinoMachineState[casinoMachines.Count];
             for (int i = 0; i < casinoMachines.Count; i++)
@@ -242,8 +249,7 @@ public class Server : Game, INetEventListener
                     velocity = playerBaseVelocity
                 },
             },
-            playerTex,
-            playerBaseVelocity);
+            playerTex);
 
         SendPacket(new JoinAcceptPacket { playerState = newPlayer.GetState(),
                                         playerBaseVelocity = playerBaseVelocity,

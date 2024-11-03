@@ -1,44 +1,21 @@
 using LiteNetLib.Utils;
 using Microsoft.Xna.Framework;
 
-public class GameEntity : IPhysics, IHittable
+public interface GameEntity : IPhysics, IHittable
 {
-    private GameEntityState ges;
-    public GameEntity(bool awake, Vector2 coords, Vector2 initialVelocity)
-    {
-        ges = new GameEntityState { awake = awake, coords = coords, velocity = initialVelocity};
-    }
 
-    public void SetCoords(Vector2 coords)
-    {
-        ges.coords = coords;
-    }
+    public void SetCoords(Vector2 coords);
 
-    public void AwakenEntity()
-    {
-        ges.awake = true;
-    }
+    public void AwakenEntity();
 
-    public void SleepEntity()
-    {
-        ges.awake = false;
-    }
+    public void SleepEntity();
 
     // getters
-    public GameEntityState GetEntityState()
-    {
-        return ges;
-    }
+    public GameEntityState GetEntityState();
 
-    public Vector2 GetCoords()
-    {
-        return ges.coords;
-    }
+    public Vector2 GetCoords();
 
-    public Vector2 GetVelocity()
-    {
-        return ges.velocity;
-    }
+    public Vector2 GetVelocity();
 }
 
 public struct GameEntityState : INetSerializable

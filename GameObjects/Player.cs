@@ -7,13 +7,30 @@ public class Player : GameEntity
 {
     private NetPeer peer;
     private PlayerState playerState;
-    private readonly Texture2D tex;
+    private Texture2D tex;
 
-    public Player(NetPeer peer, PlayerState playerState, Texture2D tex, Vector2 maxBaseVelocity)
-    : base(true, playerState.ges.coords, playerState.ges.velocity)
+    public Player(PlayerState playerState, Texture2D tex)
+    {
+        peer = null;
+        this.tex = tex;
+        this.playerState = playerState;
+    }
+
+    public Player(NetPeer peer, PlayerState playerState, Texture2D tex)
     {
         this.peer = peer;
         this.tex = tex;
+        this.playerState = playerState;
+    }
+
+    // setters
+    public void SetTex(Texture2D tex)
+    {
+        this.tex = tex;
+    }
+
+    public void SetState(PlayerState playerState)
+    {
         this.playerState = playerState;
     }
 
@@ -37,6 +54,40 @@ public class Player : GameEntity
         return peer;
     }
 
+    public uint GetID()
+    {
+        return playerState.pid;
+    }
+
+    public void SetCoords(Vector2 coords)
+    {
+        playerState.ges.coords = coords;
+    }
+
+    public void AwakenEntity()
+    {
+        playerState.ges.awake = true;
+    }
+
+    public void SleepEntity()
+    {
+        playerState.ges.awake = false;
+    }
+
+    public GameEntityState GetEntityState()
+    {
+        return playerState.ges;
+    }
+
+    public Vector2 GetCoords()
+    {
+        return playerState.ges.coords;
+    }
+
+    public Vector2 GetVelocity()
+    {
+        return playerState.ges.velocity;
+    }
 }
 
 public struct PlayerState : INetSerializable
