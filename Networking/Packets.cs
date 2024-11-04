@@ -8,6 +8,7 @@ public class JoinPacket {
 // Sent to new player on accceptance
 public class JoinAcceptPacket {
     public Rectangle gameArea { get; set; }
+    public Rectangle playerHitbox { get; set; }
     public PlayerState playerState { get; set; }
     public Vector2 playerBaseVelocity { get; set; }
     public PlayerState[] otherPlayerStates { get; set; }
@@ -27,6 +28,7 @@ public class PlayerReceiveUpdatePacket {
 public class PlayerJoinedGamePacket {
     public string new_player_username{ get; set; }
     public PlayerState new_player_state { get; set; }
+    public Rectangle new_player_hitbox { get; set; }
 }
 
 public class PlayerLeftGamePacket {

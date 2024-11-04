@@ -3,24 +3,29 @@ using LiteNetLib.Utils;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 
-public class Player : GameEntity
+public class Player : GameEntity, IDrawable
 {
     private NetPeer peer;
-    private PlayerState playerState;
+    private uint pid;
+    private string username;
     private Texture2D tex;
 
-    public Player(PlayerState playerState, Texture2D tex)
+    public Player(uint pid, string username, Texture2D tex, bool awake, Vector2 coords, Vector2 velocity)
+    : base(coords, velocity, new Rectangle(coords.ToPoint() - new Point(tex.Bounds.Width/2, tex.Bounds.Height/2), new Point(tex.Bounds.Width, tex.Bounds.Height)), awake)
     {
         peer = null;
         this.tex = tex;
-        this.playerState = playerState;
+        this.pid = pid;
+        this.username = username;
     }
 
-    public Player(NetPeer peer, PlayerState playerState, Texture2D tex)
+    public Player(NetPeer peer, uint pid, string username, Texture2D tex, bool awake, Vector2 coords, Vector2 velocity)
+    : base(coords, velocity, new Rectangle(coords.ToPoint() - new Point(tex.Bounds.Width/2, tex.Bounds.Height/2), new Point(tex.Bounds.Width, tex.Bounds.Height)), awake)
     {
         this.peer = peer;
         this.tex = tex;
-        this.playerState = playerState;
+        this.pid = pid;
+        this.username = username;
     }
 
     // setters
@@ -29,24 +34,33 @@ public class Player : GameEntity
         this.tex = tex;
     }
 
-    public void SetState(PlayerState playerState)
+    public void SetPlayerState(PlayerState playerState)
     {
-        this.playerState = playerState;
+        SetCoords(playerState.ges.coords);
+        SetVelocity(playerState.ges.velocity);
+        if (playerState.ges.awake)
+            AwakenEntity();
+        else
+            SleepEntity();
     }
 
     // getters
     public string GetUsername()
     {
-        return playerState.username;
+        return username;
     }
     public Texture2D GetTex()
     {
         return tex;
     }
 
-    public PlayerState GetState()
+    public PlayerState GetPlayerState()
     {
-        return playerState;
+        return new PlayerState {
+            pid = pid,
+            username = username,
+            ges = GetEntityState()
+        };
     }
 
     public NetPeer GetPeer()
@@ -56,38 +70,9 @@ public class Player : GameEntity
 
     public uint GetID()
     {
-        return playerState.pid;
+        return pid;
     }
 
-    public void SetCoords(Vector2 coords)
-    {
-        playerState.ges.coords = coords;
-    }
-
-    public void AwakenEntity()
-    {
-        playerState.ges.awake = true;
-    }
-
-    public void SleepEntity()
-    {
-        playerState.ges.awake = false;
-    }
-
-    public GameEntityState GetEntityState()
-    {
-        return playerState.ges;
-    }
-
-    public Vector2 GetCoords()
-    {
-        return playerState.ges.coords;
-    }
-
-    public Vector2 GetVelocity()
-    {
-        return playerState.ges.velocity;
-    }
 }
 
 public struct PlayerState : INetSerializable

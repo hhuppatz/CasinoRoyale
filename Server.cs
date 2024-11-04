@@ -26,7 +26,6 @@ public class Server : Game, INetEventListener
     Properties _gameProperties;
     MainCamera _mainCamera = MainCamera.Instance;
     private GraphicsDeviceManager _graphics;
-    private KeyboardState lastKeyboardState;
     private SpriteBatch _spriteBatch;
     private Rectangle gameArea;
     private List<Platform> platforms;
@@ -72,7 +71,6 @@ public class Server : Game, INetEventListener
         };
         server.Start(PORT_NUM);
 
-        lastKeyboardState = Keyboard.GetState();
         base.Initialize();
     }
 
@@ -122,14 +120,12 @@ public class Server : Game, INetEventListener
             PlayerState[] player_states = new PlayerState[players.Count];
             for (int i = 0; i < players.Count; i++)
             {
-                Console.WriteLine(players.Values.ToArray()[i].GetState().username);
-                PlayerState player_state = players.Values.ToArray()[i].GetState();
+                PlayerState player_state = players.Values.ToArray()[i].GetPlayerState();
                 player_states[i] = new PlayerState{
                     pid = player_state.pid,
                     username = player_state.username,
                     ges = player_state.ges
                 };
-                Console.WriteLine(player_state.ges.velocity);
             }
             CasinoMachineState[] casino_machine_states = new CasinoMachineState[casinoMachines.Count];
             for (int i = 0; i < casinoMachines.Count; i++)
@@ -150,9 +146,6 @@ public class Server : Game, INetEventListener
         //_mainCamera.MoveToFollowPlayer(players);
 
         base.Update(gameTime);
-
-        // saving for next update call
-        lastKeyboardState = Keyboard.GetState();
     }
 
     protected override void Draw(GameTime gameTime)
@@ -202,16 +195,7 @@ public class Server : Game, INetEventListener
 
         foreach (KeyValuePair<uint, Player> entry in players)
         {
-            Player curr_player = entry.Value;
-            _spriteBatch.Draw(curr_player.GetTex(),
-                            _mainCamera.TransformToView(curr_player.GetCoords()),
-                            null,
-                            Color.White,
-                            0.0f,
-                            new Vector2(curr_player.GetTex().Bounds.Width/2, curr_player.GetTex().Bounds.Height/2),
-                            ratio,
-                            0,
-                            0);
+            _spriteBatch.DrawEntity(_mainCamera, entry.Value);
         }
         _spriteBatch.End();
 
@@ -235,23 +219,22 @@ public class Server : Game, INetEventListener
         PlayerState[] other_player_states = new PlayerState[players.Count];
         for (uint i = 0; i < players.Count; i++)
         {
-            other_player_states[(int)i] = players[i].GetState();
+            other_player_states[(int)i] = players[i].GetPlayerState();
         }
 
         Player newPlayer = players[(uint)peer.Id] = new Player(
             peer, 
-            new PlayerState {
-                pid = (uint)peer.Id,
-                username = packet.username,
-                ges = new GameEntityState {
-                    awake = true,
-                    coords = initialPosition,
-                    velocity = playerBaseVelocity
-                },
-            },
-            playerTex);
+            (uint)peer.Id,
+            packet.username,
+            playerTex,
+            true,
+            initialPosition,
+            playerBaseVelocity
+        );
 
-        SendPacket(new JoinAcceptPacket { playerState = newPlayer.GetState(),
+        SendPacket(new JoinAcceptPacket { playerState = newPlayer.GetPlayerState(),
+                                        playerHitbox = new Rectangle(newPlayer.GetCoords().ToPoint() - new Point(playerTex.Bounds.Width/2, playerTex.Bounds.Height/2),
+                                                                        new Point(playerTex.Bounds.Width, playerTex.Bounds.Height)),
                                         playerBaseVelocity = playerBaseVelocity,
                                         platformStates = platform_states,
                                         otherPlayerStates = other_player_states,
@@ -260,7 +243,7 @@ public class Server : Game, INetEventListener
                                         DeliveryMethod.ReliableOrdered);
 
         foreach (Player player in players.Values) {
-            if (player.GetState().pid != newPlayer.GetState().pid) {
+            if (player.GetPlayerState().pid != newPlayer.GetPlayerState().pid) {
                 SendPacket(new PlayerJoinedGamePacket {
                     new_player_username = newPlayer.GetUsername(),
                     new_player_state = 
@@ -272,6 +255,8 @@ public class Server : Game, INetEventListener
                                 velocity = playerBaseVelocity
                             },
                         },
+                    new_player_hitbox = new Rectangle(newPlayer.GetCoords().ToPoint() - new Point(playerTex.Bounds.Width/2, playerTex.Bounds.Height/2),
+                                                                        new Point(playerTex.Bounds.Width, playerTex.Bounds.Height))
                 }, player.GetPeer(), DeliveryMethod.ReliableOrdered);
             }
         }
@@ -289,7 +274,7 @@ public class Server : Game, INetEventListener
         }
     }
 
-    // INetEventListener methods, implemented through listener
+    // INetEventListener methods, implemented through Server class
     void INetEventListener.OnConnectionRequest(ConnectionRequest request)
     {
         Console.WriteLine($"Incoming connection from {request.RemoteEndPoint}");
@@ -329,8 +314,8 @@ public class Server : Game, INetEventListener
             Player playerLeft;
             if (players.TryGetValue((uint)peer.Id, out playerLeft)) {
                 foreach (Player player in players.Values) {
-                    if (player.GetState().pid != playerLeft.GetState().pid) {
-                        SendPacket(new PlayerLeftGamePacket { pid = playerLeft.GetState().pid }, player.GetPeer(), DeliveryMethod.ReliableOrdered);
+                    if (player.GetPlayerState().pid != playerLeft.GetPlayerState().pid) {
+                        SendPacket(new PlayerLeftGamePacket { pid = playerLeft.GetPlayerState().pid }, player.GetPeer(), DeliveryMethod.ReliableOrdered);
                     }
                 }
                 players.Remove((uint)peer.Id);
