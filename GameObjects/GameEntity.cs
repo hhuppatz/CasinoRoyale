@@ -2,24 +2,13 @@ using System;
 using LiteNetLib.Utils;
 using Microsoft.Xna.Framework;
 
-public class GameEntity : IPhysics, IHittable
+public class GameEntity : IExist, IPhysics, IHittable
 {
     private bool awake;
     private Vector2 velocity;
     private Rectangle hitbox;
     private event EventHandler<MovementEventArgs> MovementEvent;
-    private Vector2 coords
-    {
-        get { return coords; }
-        set
-        {
-            if (coords != value)
-            {
-                coords = value;
-                OnMovement(new MovementEventArgs { coords = coords });
-            }
-        }
-    }
+    private Vector2 coords;
 
     protected virtual void OnMovement(MovementEventArgs e)
     {
@@ -42,7 +31,11 @@ public class GameEntity : IPhysics, IHittable
     // setters
     public void SetCoords(Vector2 coords)
     {
-        this.coords = coords;
+        if (!this.coords.Equals(coords))
+        {
+            this.coords = coords;
+            OnMovement(new MovementEventArgs { coords = coords });
+        }
     }
 
     public void SetVelocity(Vector2 velocity)
