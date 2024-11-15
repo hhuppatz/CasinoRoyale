@@ -13,6 +13,11 @@ public class CasinoMachine
         machineState.machineNum = machineNum;
     }
 
+    public void SetState(CasinoMachineState m_MachineState)
+    {
+        machineState = m_MachineState;
+    }
+
     public Texture2D GetTex()
     {
         return tex;

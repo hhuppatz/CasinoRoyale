@@ -3,37 +3,49 @@ using LiteNetLib.Utils;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 
-public class Platform
+public class Platform : IDrawable, ICollidable
 {
-    private PlatformState platformState;
+    private uint platNum;
+    private Vector2 L;
+    private Vector2 R;
     private Texture2D tex;
+    private event EventHandler<PlatformMovementEventArgs> MovementEvent;
+    private Rectangle _hitbox;
+    public Rectangle Hitbox { get => _hitbox; set => _hitbox = value; }
 
     public Platform(uint platNum, Texture2D tex, Vector2 L, Vector2 R)
     {
         this.tex = tex;
-        platformState.platNum = platNum;
-        platformState.L = L;
-        platformState.R = R;
+        this.platNum = platNum;
+        this.L = L;
+        this.R = R;
+        Hitbox = new Rectangle(L.ToPoint() - new Point(tex.Bounds.Width/2, tex.Bounds.Height/2), new Point(tex.Bounds.Width, tex.Bounds.Height));
+        MovementEvent += UpdateHitbox;
+        MovementEvent += UpdateRCoords;
     }
 
     public PlatformState GetState()
     {
-        return platformState;
+        return new PlatformState {
+            platNum = platNum,
+            L = L,
+            R = R
+        };
     }
 
     public Vector2 GetLCoords()
     {
-        return platformState.L;
+        return L;
     }
 
     public Vector2 GetRCoords()
     {
-        return platformState.R;
+        return R;
     }
 
     public int GetWidth()
     {
-        return Math.Abs((int)platformState.L.X - (int)platformState.R.X);
+        return Math.Abs((int)L.X - (int)R.X);
     }
 
     public Texture2D GetTex()
@@ -43,8 +55,47 @@ public class Platform
 
     public Vector2 GetCoords()
     {
-        return (platformState.R + platformState.L)/2;
+        return L;
     }
+
+    public void SetTex(Texture2D tex)
+    {
+        this.tex = tex;
+    }
+
+    public void SetCoords(Vector2 coords)
+    {
+        if (!L.Equals(coords))
+        {
+            SetLCoords(coords);
+        }
+    }
+
+    protected virtual void OnMovement(PlatformMovementEventArgs e)
+    {
+        MovementEvent?.Invoke(this, e);
+    }
+
+    private void SetLCoords(Vector2 coords)
+    {
+        float platLen = R.X - L.X;
+        L = coords;
+        OnMovement(new PlatformMovementEventArgs { coords = coords, length = platLen });
+    }
+
+    private void UpdateRCoords(object s, PlatformMovementEventArgs e)
+    {
+        R = new Vector2(e.coords.X + e.length, e.coords.Y);
+    }
+
+    private void UpdateHitbox(object s, PlatformMovementEventArgs e)
+    {
+        Hitbox = new Rectangle(e.coords.ToPoint(), Hitbox.Size);
+    }
+
+    // Platforms are static by default
+    public void SetVelocity(Vector2 velocity) {}
+    public Vector2 GetVelocity() { return Vector2.Zero; }
 }
 
 public struct PlatformState: INetSerializable
@@ -62,4 +113,10 @@ public struct PlatformState: INetSerializable
         L = reader.GetVector2();
         R = reader.GetVector2();
     }
+}
+
+public class PlatformMovementEventArgs : EventArgs
+{
+    public Vector2 coords { get; set; }
+    public float length { get; set; }
 }

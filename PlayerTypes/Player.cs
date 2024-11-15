@@ -1,28 +1,16 @@
-using LiteNetLib;
 using LiteNetLib.Utils;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 
 public class Player : GameEntity, IDrawable
 {
-    private NetPeer peer;
     private uint pid;
     private string username;
     private Texture2D tex;
 
-    public Player(uint pid, string username, Texture2D tex, bool awake, Vector2 coords, Vector2 velocity)
-    : base(coords, velocity, new Rectangle(coords.ToPoint() - new Point(tex.Bounds.Width/2, tex.Bounds.Height/2), new Point(tex.Bounds.Width, tex.Bounds.Height)), awake)
+    public Player(uint pid, string username, Texture2D tex, Vector2 coords, Vector2 velocity, Rectangle hitbox, bool awake)
+    : base(coords, velocity, hitbox, awake)
     {
-        peer = null;
-        this.tex = tex;
-        this.pid = pid;
-        this.username = username;
-    }
-
-    public Player(NetPeer peer, uint pid, string username, Texture2D tex, bool awake, Vector2 coords, Vector2 velocity)
-    : base(coords, velocity, new Rectangle(coords.ToPoint() - new Point(tex.Bounds.Width/2, tex.Bounds.Height/2), new Point(tex.Bounds.Width, tex.Bounds.Height)), awake)
-    {
-        this.peer = peer;
         this.tex = tex;
         this.pid = pid;
         this.username = username;
@@ -61,11 +49,6 @@ public class Player : GameEntity, IDrawable
             username = username,
             ges = GetEntityState()
         };
-    }
-
-    public NetPeer GetPeer()
-    {
-        return peer;
     }
 
     public uint GetID()

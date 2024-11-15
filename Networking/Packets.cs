@@ -18,6 +18,8 @@ public class JoinAcceptPacket {
 
 public class PlayerSendUpdatePacket {
     public Vector2 coords { get; set; }
+    public Vector2 velocity { get; set; }
+    public float dt { get; set; }
 }
 
 public class PlayerReceiveUpdatePacket {

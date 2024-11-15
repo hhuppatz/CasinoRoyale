@@ -2,30 +2,31 @@ using System;
 using LiteNetLib.Utils;
 using Microsoft.Xna.Framework;
 
-public class GameEntity : IExist, IPhysics, IHittable
+public class GameEntity : ICollidable
 {
     private bool awake;
     private Vector2 velocity;
-    private Rectangle hitbox;
-    private event EventHandler<MovementEventArgs> MovementEvent;
+    private event EventHandler<EntityMovementEventArgs> MovementEvent;
     private Vector2 coords;
-
-    protected virtual void OnMovement(MovementEventArgs e)
-    {
-        MovementEvent?.Invoke(this, e);
-    }
+    private Rectangle _hitbox;
+    public Rectangle Hitbox { get => _hitbox; set => _hitbox = value; }
 
     public GameEntity(Vector2 coords, Vector2 velocity, Rectangle hitbox, bool awake) {
         this.awake = awake;
         this.coords = coords;
         this.velocity = velocity;
-        this.hitbox = hitbox;
+        Hitbox = hitbox;
         MovementEvent += UpdateHitbox;
     }
 
-    private void UpdateHitbox(object s, MovementEventArgs e)
+    protected virtual void OnMovement(EntityMovementEventArgs e)
     {
-        hitbox = new Rectangle(GetCoords().ToPoint(), hitbox.Size);
+        MovementEvent?.Invoke(this, e);
+    }
+
+    private void UpdateHitbox(object s, EntityMovementEventArgs e)
+    {
+        Hitbox = new Rectangle(e.coords.ToPoint(), Hitbox.Size);
     }
 
     // setters
@@ -34,7 +35,7 @@ public class GameEntity : IExist, IPhysics, IHittable
         if (!this.coords.Equals(coords))
         {
             this.coords = coords;
-            OnMovement(new MovementEventArgs { coords = coords });
+            OnMovement(new EntityMovementEventArgs { coords = coords });
         }
     }
 
@@ -72,11 +73,6 @@ public class GameEntity : IExist, IPhysics, IHittable
     {
         return velocity;
     }
-
-    public Rectangle GetHitbox()
-    {
-        return hitbox;
-    }
 }
 
 public struct GameEntityState : INetSerializable
@@ -100,7 +96,7 @@ public struct GameEntityState : INetSerializable
     }
 }
 
-public class MovementEventArgs : EventArgs
+public class EntityMovementEventArgs : EventArgs
 {
     public Vector2 coords { get; set; }
 }

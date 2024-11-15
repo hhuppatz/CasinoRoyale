@@ -5,7 +5,7 @@ using Microsoft.Xna.Framework.Graphics;
 public static class DrawExtensions
 {
     public static void DrawEntity<T>(this SpriteBatch _spriteBatch, MainCamera _mainCamera, T drawable)
-    where T : IExist, IDrawable
+    where T : IDrawable
     {
         _spriteBatch.Draw(drawable.GetTex(),
                             _mainCamera.TransformToView(drawable.GetCoords()),
