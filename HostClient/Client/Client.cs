@@ -17,8 +17,8 @@ public class Client : Game, INetEventListener {
     private int PORT_NUM = 12345;
     private NetDataWriter writer;
     private NetPacketProcessor packetProcessor;
-    private Player player;
-    private List<Player> otherPlayers;
+    private PlayableCharacter player1;
+    private List<PlayableCharacter> otherPlayers;
     private NetManager client;
     private NetPeer server;
     private bool connected = false;
@@ -49,7 +49,7 @@ public class Client : Game, INetEventListener {
     protected override void Initialize()
     {
         // Initialise Client player (this)
-        otherPlayers = new List<Player>();
+        otherPlayers = new List<PlayableCharacter>();
 
         writer = new NetDataWriter();
         packetProcessor = new NetPacketProcessor();
@@ -86,7 +86,7 @@ public class Client : Game, INetEventListener {
         JoinServer();
 
         // main camera initialisation
-        _mainCamera.InitMainCamera(Window, player);
+        _mainCamera.InitMainCamera(Window, player1);
     }
 
     protected override void Update(GameTime gameTime)
@@ -96,26 +96,25 @@ public class Client : Game, INetEventListener {
         // left is negative x, right positive
         if (Keyboard.GetState().IsKeyDown(Keys.A))
         {
-            player.SetCoords(player.GetCoords() + new Vector2(-player.GetVelocity().X,0) * deltaTime);
+            player1.SetCoords(player1.GetCoords() + new Vector2(-player1.GetVelocity().X,0) * deltaTime);
         }
         if (Keyboard.GetState().IsKeyDown(Keys.D))
         {
-            player.SetCoords(player.GetCoords() + new Vector2(player.GetVelocity().X,0) * deltaTime);
+            player1.SetCoords(player1.GetCoords() + new Vector2(player1.GetVelocity().X,0) * deltaTime);
         }
 
         if (client != null) {
             client.PollEvents();
-            if (!player.Equals(null)) {
-                SendPacket(new PlayerSendUpdatePacket { coords = player.GetCoords(),
-                                                        velocity = player.GetVelocity(),
+            if (!player1.Equals(null)) {
+                SendPacket(new PlayerSendUpdatePacket { coords = player1.GetCoords(),
+                                                        velocity = player1.GetVelocity(),
                                                         dt = deltaTime },
-                                                        DeliveryMethod.Unreliable
-                                                        );
+                                                        DeliveryMethod.Unreliable);
             }
         }
 
         // TODO: Add your update logic here
-        _mainCamera.MoveToFollowPlayer(player);
+        _mainCamera.MoveToFollowPlayer(player1);
 
         if (Keyboard.GetState().IsKeyDown(Keys.F11))
             Resolution.ToggleFullscreen(Window, _graphics);
@@ -178,7 +177,7 @@ public class Client : Game, INetEventListener {
         }
 
         // Draw this player
-        _spriteBatch.DrawEntity(_mainCamera, player);
+        _spriteBatch.DrawEntity(_mainCamera, player1);
 
         _spriteBatch.End();
 
@@ -189,8 +188,8 @@ public class Client : Game, INetEventListener {
     public void OnReceiveUpdate(PlayerReceiveUpdatePacket packet) {
         // For each player state we are sent, update local player states
         foreach (PlayerState other_player_state in packet.playerStates) {
-            if (other_player_state.pid != player.GetPlayerState().pid) {
-                foreach (Player other_player in otherPlayers)
+            if (other_player_state.pid != player1.GetPlayerState().pid) {
+                foreach (PlayableCharacter other_player in otherPlayers)
                 {
                     if (other_player_state.pid == other_player.GetPlayerState().pid)
                     {
@@ -223,7 +222,7 @@ public class Client : Game, INetEventListener {
 
     public void OnPlayerJoin(PlayerJoinedGamePacket packet) {
         Console.WriteLine($"Player '{packet.new_player_username}' (pid: {packet.new_player_state.pid}) joined the game");
-        otherPlayers.Add(new Player(
+        otherPlayers.Add(new PlayableCharacter(
                             packet.new_player_state.pid,
                             packet.new_player_username,
                             playerTex,
@@ -236,7 +235,7 @@ public class Client : Game, INetEventListener {
 
     public void OnPlayerLeave(PlayerLeftGamePacket packet) {
         Console.WriteLine($"Player (pid: {packet.pid}) left the game");
-        foreach (Player otherPlayer in otherPlayers)
+        foreach (PlayableCharacter otherPlayer in otherPlayers)
         {
             if (packet.pid == otherPlayer.GetID())
             {
@@ -251,7 +250,7 @@ public class Client : Game, INetEventListener {
         Console.WriteLine($"Join accepted by server (pid: {packet.playerState.pid})");
         gameArea = packet.gameArea;
         playerBaseVelocity = packet.playerBaseVelocity;
-        player = new Player(packet.playerState.pid,
+        player1 = new PlayableCharacter(packet.playerState.pid,
                             packet.playerState.username,
                             playerTex,
                             packet.playerState.ges.coords,
@@ -269,9 +268,9 @@ public class Client : Game, INetEventListener {
         }
         foreach(PlayerState other_player_state in packet.otherPlayerStates)
         {
-            if (other_player_state.pid != player.GetID())
+            if (other_player_state.pid != player1.GetID())
             {
-                otherPlayers.Add(new Player(
+                otherPlayers.Add(new PlayableCharacter(
                     other_player_state.pid,
                     other_player_state.username,
                     playerTex,
@@ -279,7 +278,9 @@ public class Client : Game, INetEventListener {
                     playerBaseVelocity,
                     packet.playerHitbox,
                     true));
+                Console.WriteLine(1);
             }
+            Console.WriteLine(2);
         }
         
         connected = true;

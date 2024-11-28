@@ -2,13 +2,13 @@ using LiteNetLib.Utils;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 
-public class Player : GameEntity, IDrawable
+public class PlayableCharacter : GameEntity, IDrawable
 {
     private uint pid;
     private string username;
     private Texture2D tex;
 
-    public Player(uint pid, string username, Texture2D tex, Vector2 coords, Vector2 velocity, Rectangle hitbox, bool awake)
+    public PlayableCharacter(uint pid, string username, Texture2D tex, Vector2 coords, Vector2 velocity, Rectangle hitbox, bool awake)
     : base(coords, velocity, hitbox, awake)
     {
         this.tex = tex;

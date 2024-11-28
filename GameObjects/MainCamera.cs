@@ -21,13 +21,13 @@ public sealed class MainCamera
         }
     }
 
-    public void InitMainCamera(GameWindow _window, Player player)
+    public void InitMainCamera(GameWindow _window, PlayableCharacter player)
     {
         coords = player.GetCoords();
         offset = new Vector2(_window.ClientBounds.Width/2, _window.ClientBounds.Height/2 + 175);
     }
 
-    public void MoveToFollowPlayer(Player player)
+    public void MoveToFollowPlayer(PlayableCharacter player)
     {
         coords = Vector2.Subtract(player.GetCoords(), offset);
     }
