@@ -2,19 +2,21 @@ using System;
 using LiteNetLib.Utils;
 using Microsoft.Xna.Framework;
 
-public class GameEntity : ICollidable
+public class GameEntity : IHitbox, IMovement, IObject
 {
     private bool awake;
-    private Vector2 velocity;
     private event EventHandler<EntityMovementEventArgs> MovementEvent;
-    private Vector2 coords;
+    private Vector2 _coords;
+    public Vector2 Coords { get => _coords; set { _coords = value; OnMovement(new EntityMovementEventArgs { coords = _coords });}  }
+    private Vector2 _velocity;
+    public Vector2 Velocity { get => _velocity; set => _velocity = value; }
     private Rectangle _hitbox;
     public Rectangle Hitbox { get => _hitbox; set => _hitbox = value; }
 
     public GameEntity(Vector2 coords, Vector2 velocity, Rectangle hitbox, bool awake) {
         this.awake = awake;
-        this.coords = coords;
-        this.velocity = velocity;
+        Coords = coords;
+        Velocity = velocity;
         Hitbox = hitbox;
         MovementEvent += UpdateHitbox;
     }
@@ -27,21 +29,6 @@ public class GameEntity : ICollidable
     private void UpdateHitbox(object s, EntityMovementEventArgs e)
     {
         Hitbox = new Rectangle(e.coords.ToPoint(), Hitbox.Size);
-    }
-
-    // setters
-    public void SetCoords(Vector2 coords)
-    {
-        if (!this.coords.Equals(coords))
-        {
-            this.coords = coords;
-            OnMovement(new EntityMovementEventArgs { coords = coords });
-        }
-    }
-
-    public void SetVelocity(Vector2 velocity)
-    {
-        this.velocity = velocity;
     }
 
     public void AwakenEntity()
@@ -59,19 +46,9 @@ public class GameEntity : ICollidable
     {
         return new GameEntityState {
             awake = awake,
-            coords = coords,
-            velocity = velocity
+            coords = Coords,
+            velocity = Velocity
         };
-    }
-
-    public Vector2 GetCoords()
-    {
-        return coords;
-    }
-
-    public Vector2 GetVelocity()
-    {
-        return velocity;
     }
 }
 

@@ -3,7 +3,7 @@ using LiteNetLib.Utils;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 
-public class Platform : IDrawable, ICollidable
+public class Platform : IDrawable, IHitbox
 {
     private uint platNum;
     private Vector2 L;

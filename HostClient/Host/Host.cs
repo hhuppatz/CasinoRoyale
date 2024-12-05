@@ -16,12 +16,12 @@ public class Host : Game, INetEventListener
     // Server fields
     private int PORT_NUM = 12345;
     private NetManager server;
-    public Vector2 initialPosition = new Vector2(0, 0);
     private NetDataWriter writer;
     private NetPacketProcessor packetProcessor;
     private Dictionary<uint, NetworkPlayer> networkPlayers = new Dictionary<uint, NetworkPlayer>();
     private float serverUpdatetimer = 0f;
-    private int MAX_PLAYERS = 6;
+    private uint MAX_PLAYERS = 6;
+    private PlayerIDs playerIDs;
 
     // Game fields
     Properties _gameProperties;
@@ -74,6 +74,8 @@ public class Host : Game, INetEventListener
         server = new NetManager(this) {
             AutoRecycle = true,
         };
+
+        playerIDs = new PlayerIDs(MAX_PLAYERS);
         server.Start(PORT_NUM);
 
         base.Initialize();
@@ -108,7 +110,8 @@ public class Host : Game, INetEventListener
         
         casinoMachines = casinoMachineFactory.SpawnCasinoMachines();
 
-        player1 = new PlayableCharacter(0,
+        player1 = new PlayableCharacter(
+                            playerIDs.GetNextID(),
                             username,
                             playerTex,
                             playerOrigin,
@@ -130,16 +133,16 @@ public class Host : Game, INetEventListener
 
         if (Keyboard.GetState().IsKeyDown(Keys.A))
         {
-            player1.SetCoords(player1.GetCoords() + new Vector2(-player1.GetVelocity().X,0) * deltaTime);
+            player1.Coords = player1.Coords + new Vector2(-player1.Velocity.X,0) * deltaTime;
         }
         if (Keyboard.GetState().IsKeyDown(Keys.D))
         {
-            player1.SetCoords(player1.GetCoords() + new Vector2(player1.GetVelocity().X,0) * deltaTime);
+            player1.Coords = player1.Coords + new Vector2(player1.Velocity.X,0) * deltaTime;
         }
 
         foreach (KeyValuePair<uint, NetworkPlayer> entry in networkPlayers)
         {
-            ICollidable m_other = entry.Value.Player;
+            IHitbox m_other = entry.Value.Player;
             if (m_other.CollidedWith(player1))
             {
                 Console.WriteLine(entry.Value.Player.GetID());
@@ -147,16 +150,19 @@ public class Host : Game, INetEventListener
         }
 
         // Check player states and update according to received messages
-        PlayerState[] m_otherPlayerStates = new PlayerState[networkPlayers.Count + 1];
-        m_otherPlayerStates[0] = new PlayerState {
+        // Host player
+        PlayerState[] m_OtherPlayerStates = new PlayerState[networkPlayers.Count + 1];
+        m_OtherPlayerStates[0] = new PlayerState {
                 pid = player1.GetID(),
                 username = player1.GetUsername(),
                 ges = player1.GetEntityState()
-            };
-        for (int i = 1; i < networkPlayers.Count; i++)
+        };
+
+        // Connected players
+        for (int i = 1; i < networkPlayers.Count + 1; i++)
         {
-            PlayerState m_playerState = networkPlayers.Values.ToArray()[i].Player.GetPlayerState();
-            m_otherPlayerStates[i] = new PlayerState {
+            PlayerState m_playerState = networkPlayers.Values.ToArray()[i - 1].Player.GetPlayerState();
+            m_OtherPlayerStates[i] = new PlayerState {
                 pid = m_playerState.pid,
                 username = m_playerState.username,
                 ges = m_playerState.ges
@@ -168,9 +174,10 @@ public class Host : Game, INetEventListener
         {
             m_CasinoMachineStates[i] = casinoMachines[i].GetState();
         }
+
         foreach (KeyValuePair<uint, NetworkPlayer> entry in networkPlayers)
         {
-            SendPacket(new PlayerReceiveUpdatePacket{ playerStates = m_otherPlayerStates,
+            SendPacket(new PlayerReceiveUpdatePacket{ playerStates = m_OtherPlayerStates,
                                                     casinoMachineStates = m_CasinoMachineStates },
                                                     entry.Value.Peer,
                                                     DeliveryMethod.Unreliable);
@@ -192,14 +199,14 @@ public class Host : Game, INetEventListener
         // drawing sprites
         _spriteBatch.Begin();
 
-        foreach (CasinoMachine machine in casinoMachines)
+        foreach (CasinoMachine m_CasinoMachine in casinoMachines)
         {
-            _spriteBatch.Draw(machine.GetTex(),
-                            _mainCamera.TransformToView(machine.GetCoords()),
+            _spriteBatch.Draw(m_CasinoMachine.GetTex(),
+                            _mainCamera.TransformToView(m_CasinoMachine.GetCoords()),
                             null,
                             Color.White,
                             0.0f,
-                            new Vector2(machine.GetTex().Bounds.Width/2, machine.GetTex().Bounds.Height/2),
+                            new Vector2(m_CasinoMachine.GetTex().Bounds.Width/2, m_CasinoMachine.GetTex().Bounds.Height/2),
                             ratio,
                             0,
                             0);
@@ -208,22 +215,22 @@ public class Host : Game, INetEventListener
         foreach (Platform platform in platforms)
         {
             // TODO: Need to implement restriction on plat length so is a multiple of the length of the plat tex
-            int m_platL = (int)platform.GetLCoords().X;
-            int m_platTexWidth = platform.GetTex().Bounds.Width;
-            int m_platWidth = platform.GetWidth();
-            int i = m_platL;
-            while (i < m_platL + m_platWidth)
+            int m_PlatL = (int)platform.GetLCoords().X;
+            int m_PlatTexWidth = platform.GetTex().Bounds.Width;
+            int m_PlatWidth = platform.GetWidth();
+            int i = m_PlatL;
+            while (i < m_PlatL + m_PlatWidth)
             {
                 _spriteBatch.Draw(platform.GetTex(),
-                                _mainCamera.TransformToView(new Vector2(i + m_platTexWidth/2, platform.GetCoords().Y)),
+                                _mainCamera.TransformToView(new Vector2(i + m_PlatTexWidth/2, platform.GetCoords().Y)),
                                 null,
                                 Color.White,
                                 0.0f,
-                                new Vector2(m_platTexWidth/2, m_platTexWidth/2),
+                                new Vector2(m_PlatTexWidth/2, m_PlatTexWidth/2),
                                 ratio,
                                 0,
                                 0);
-                i += m_platTexWidth;
+                i += m_PlatTexWidth;
             }
         }
 
@@ -240,21 +247,21 @@ public class Host : Game, INetEventListener
 
     // Server functionality methods
     public void OnJoinReceived(JoinPacket packet, NetPeer peer) {
-        Console.WriteLine($"Received join from {packet.username} (pid: {(uint)peer.Id})");
+        Console.WriteLine($"Received join from {packet.username} (peer id: {(uint)peer.Id})");
 
         PlatformState[] m_platformStates = new PlatformState[platforms.Count];
         for (int i = 0; i < platforms.Count; i++)
         {
             m_platformStates[i] = platforms[i].GetState();
         }
-        CasinoMachineState[]m_CasinoMachineStates = new CasinoMachineState[casinoMachines.Count];
+        CasinoMachineState[] m_CasinoMachineStates = new CasinoMachineState[casinoMachines.Count];
         for (int i = 0; i < casinoMachines.Count; i++)
         {
            m_CasinoMachineStates[i] = casinoMachines[i].GetState();
         }
         PlayerState[] m_otherPlayerStates = new PlayerState[networkPlayers.Count + 1];
         m_otherPlayerStates[0] = player1.GetPlayerState();
-        for (uint i = 1; i < networkPlayers.Count; i++)
+        for (uint i = 1; i < networkPlayers.Count + 1; i++)
         {
             m_otherPlayerStates[i] = networkPlayers[i].Player.GetPlayerState();
         }
@@ -262,17 +269,18 @@ public class Host : Game, INetEventListener
         NetworkPlayer m_NewNetPlayer = networkPlayers[(uint)peer.Id] = new NetworkPlayer(
             peer,
             new PlayableCharacter( 
-            (uint)peer.Id,
+            playerIDs.GetNextID(),
             packet.username,
             playerTex,
-            initialPosition,
+            playerOrigin,
             playerBaseVelocity,
             new Rectangle(playerOrigin.ToPoint(), new Point(playerTex.Bounds.Width, playerTex.Bounds.Height)),
             true)
         );
+        
 
         SendPacket(new JoinAcceptPacket { playerState = m_NewNetPlayer.Player.GetPlayerState(),
-                                        playerHitbox = new Rectangle(m_NewNetPlayer.Player.GetCoords().ToPoint(), new Point(playerTex.Bounds.Width, playerTex.Bounds.Height)),
+                                        playerHitbox = new Rectangle(m_NewNetPlayer.Player.Coords.ToPoint(), new Point(playerTex.Bounds.Width, playerTex.Bounds.Height)),
                                         playerBaseVelocity = playerBaseVelocity,
                                         platformStates = m_platformStates,
                                         otherPlayerStates = m_otherPlayerStates,
@@ -286,21 +294,21 @@ public class Host : Game, INetEventListener
                     new_player_username = m_NewNetPlayer.Player.GetUsername(),
                     new_player_state = 
                         new PlayerState {
-                            pid = (uint)peer.Id,
+                            pid = m_NewNetPlayer.Player.GetPlayerState().pid,
                             ges = new GameEntityState {
                                 awake = true,
-                                coords = initialPosition,
-                                velocity = playerBaseVelocity
+                                coords = m_NewNetPlayer.Player.Coords,
+                                velocity = m_NewNetPlayer.Player.Velocity
                             },
                         },
-                    new_player_hitbox = new Rectangle(m_NewNetPlayer.Player.GetCoords().ToPoint(), new Point(playerTex.Bounds.Width, playerTex.Bounds.Height))
+                    new_player_hitbox = new Rectangle(m_NewNetPlayer.Player.Coords.ToPoint(), new Point(playerTex.Bounds.Width, playerTex.Bounds.Height))
                 }, player.Peer, DeliveryMethod.ReliableOrdered);
             }
         }
     }
 
     public void OnPlayerUpdate(PlayerSendUpdatePacket packet, NetPeer peer) {
-        networkPlayers[(uint)peer.Id].Player.SetCoords(packet.coords);
+        networkPlayers[(uint)peer.Id].Player.Coords = packet.coords;
     }
 
     public void SendPacket<T>(T packet, NetPeer peer, DeliveryMethod deliveryMethod) where T : class, new() {
@@ -346,9 +354,9 @@ public class Host : Game, INetEventListener
     // Need to rework
     void INetEventListener.OnPeerDisconnected(NetPeer peer, DisconnectInfo disconnectInfo)
     {
-        Console.WriteLine($"Player (pid: {(uint)peer.Id}) left the game");
+        Console.WriteLine($"Player (peer id: {(uint)peer.Id}) left the game");
         if (peer.Tag == null) {
-            Console.WriteLine($"Player (pid: {(uint)peer.Id}) cannot be found in the game");
+            Console.WriteLine($"Player (peer id: {(uint)peer.Id}) cannot be found in the game");
             return;
         }
 
@@ -361,25 +369,6 @@ public class Host : Game, INetEventListener
             }
             networkPlayers.Remove((uint)peer.Id);
         }
-    }
-
-    private struct PlayerIDs
-    {
-        private Dictionary<uint, bool> ids;
-
-        public PlayerIDs(int MAX_PLAYERS)
-        {
-            for (int i = 0; i < MAX_PLAYERS; i++)
-            {
-                ids.Add((uint)i, false);
-            }
-        }
-
-        public bool IsTaken(uint id)
-        {
-            return ids[id];
-        }
-
     }
 }
 

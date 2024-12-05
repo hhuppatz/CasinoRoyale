@@ -37,6 +37,7 @@ public class Client : Game, INetEventListener {
     // Player fields
     private Texture2D playerTex;
     private Vector2 playerBaseVelocity;
+    private float deltaTime;
 
     public Client()
     {
@@ -91,23 +92,23 @@ public class Client : Game, INetEventListener {
 
     protected override void Update(GameTime gameTime)
     {
-        float deltaTime = (float)gameTime.ElapsedGameTime.TotalSeconds;
+        deltaTime = (float)gameTime.ElapsedGameTime.TotalSeconds;
 
         // left is negative x, right positive
         if (Keyboard.GetState().IsKeyDown(Keys.A))
         {
-            player1.SetCoords(player1.GetCoords() + new Vector2(-player1.GetVelocity().X,0) * deltaTime);
+            player1.Coords = player1.Coords + new Vector2(-player1.Velocity.X,0) * deltaTime;
         }
         if (Keyboard.GetState().IsKeyDown(Keys.D))
         {
-            player1.SetCoords(player1.GetCoords() + new Vector2(player1.GetVelocity().X,0) * deltaTime);
+            player1.Coords = player1.Coords + new Vector2(player1.Velocity.X,0) * deltaTime;
         }
 
         if (client != null) {
             client.PollEvents();
             if (!player1.Equals(null)) {
-                SendPacket(new PlayerSendUpdatePacket { coords = player1.GetCoords(),
-                                                        velocity = player1.GetVelocity(),
+                SendPacket(new PlayerSendUpdatePacket { coords = player1.Coords,
+                                                        velocity = player1.Velocity,
                                                         dt = deltaTime },
                                                         DeliveryMethod.Unreliable);
             }
@@ -136,37 +137,39 @@ public class Client : Game, INetEventListener {
 
         // drawing sprites
         _spriteBatch.Begin();
-        for (int j = 0; j < casinoMachines.Count; j++)
+        
+        foreach (CasinoMachine m_CasinoMachine in casinoMachines)
         {
-            CasinoMachine machine = casinoMachines[j];
-            _spriteBatch.Draw(machine.GetTex(), _mainCamera.TransformToView(machine.GetCoords()),
+            _spriteBatch.Draw(m_CasinoMachine.GetTex(),
+                            _mainCamera.TransformToView(m_CasinoMachine.GetCoords()),
                             null,
                             Color.White,
                             0.0f,
-                            Vector2.Zero,
+                            new Vector2(m_CasinoMachine.GetTex().Bounds.Width/2, m_CasinoMachine.GetTex().Bounds.Height/2),
                             ratio,
                             0,
                             0);
         }
+        
         foreach (Platform platform in platforms)
         {
             // TODO: Need to implement restriction on plat length so is a multiple of the length of the plat tex
-            int platL = (int)platform.GetLCoords().X;
-            int platTexWidth = platform.GetTex().Bounds.Width;
-            int platWidth = platform.GetWidth();
-            int i = platL;
-            while (i < platL + platWidth)
+            int m_PlatL = (int)platform.GetLCoords().X;
+            int m_PlatTexWidth = platform.GetTex().Bounds.Width;
+            int m_PlatWidth = platform.GetWidth();
+            int i = m_PlatL;
+            while (i < m_PlatL + m_PlatWidth)
             {
                 _spriteBatch.Draw(platform.GetTex(),
-                                _mainCamera.TransformToView(new Vector2(i + platTexWidth/2, platform.GetCoords().Y)),
+                                _mainCamera.TransformToView(new Vector2(i + m_PlatTexWidth/2, platform.GetCoords().Y)),
                                 null,
                                 Color.White,
                                 0.0f,
-                                Vector2.Zero,
+                                new Vector2(m_PlatTexWidth/2, m_PlatTexWidth/2),
                                 ratio,
                                 0,
                                 0);
-                i += platTexWidth;
+                i += m_PlatTexWidth;
             }
         }
 
@@ -187,13 +190,15 @@ public class Client : Game, INetEventListener {
     // Network methods
     public void OnReceiveUpdate(PlayerReceiveUpdatePacket packet) {
         // For each player state we are sent, update local player states
-        foreach (PlayerState other_player_state in packet.playerStates) {
-            if (other_player_state.pid != player1.GetPlayerState().pid) {
-                foreach (PlayableCharacter other_player in otherPlayers)
+        foreach (PlayerState m_OtherPlayerNewState in packet.playerStates)
+        {
+            if (m_OtherPlayerNewState.pid != player1.GetPlayerState().pid)
+            {
+                foreach (PlayableCharacter m_OtherPlayer in otherPlayers)
                 {
-                    if (other_player_state.pid == other_player.GetPlayerState().pid)
+                    if (m_OtherPlayerNewState.pid == m_OtherPlayer.GetPlayerState().pid)
                     {
-                        other_player.SetPlayerState(other_player_state);
+                        m_OtherPlayer.SetPlayerState(m_OtherPlayerNewState);
                     }
                 }
             }
@@ -278,9 +283,7 @@ public class Client : Game, INetEventListener {
                     playerBaseVelocity,
                     packet.playerHitbox,
                     true));
-                Console.WriteLine(1);
             }
-            Console.WriteLine(2);
         }
         
         connected = true;

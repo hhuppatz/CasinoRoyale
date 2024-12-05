@@ -24,8 +24,8 @@ public class PlayableCharacter : GameEntity, IDrawable
 
     public void SetPlayerState(PlayerState playerState)
     {
-        SetCoords(playerState.ges.coords);
-        SetVelocity(playerState.ges.velocity);
+        Coords = playerState.ges.coords;
+        Velocity = playerState.ges.velocity;
         if (playerState.ges.awake)
             AwakenEntity();
         else
