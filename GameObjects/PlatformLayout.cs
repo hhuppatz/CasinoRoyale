@@ -22,14 +22,14 @@ public static class PlatformLayout
     public static List<Platform> GenerateStandardRandPlatLayout(Texture2D platTex, Rectangle gameArea, int minLen, int maxLen, int horizontalDistApart, int verticalDistApart, int platSpawnChance)
     {
         uint platNum = 0;
-        var rand = new Random();
+        Random rand = new Random();
         PlatformFactory platformFactory = new PlatformFactory(platTex);
         List<Platform> platforms = new List<Platform>();
 
         int i = gameArea.Y;
         int j = gameArea.X;
         
-        while (i < gameArea.Y + gameArea.Height)
+        while (i < gameArea.Y + gameArea.Height - 2000)
         {
             while (j < gameArea.X + gameArea.Width)
             {

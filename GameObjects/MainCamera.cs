@@ -13,23 +13,17 @@ public sealed class MainCamera
 
     // Only allow one instance of Main Camera to exist (le singleton)
     private static readonly Lazy<MainCamera> lazy = new Lazy<MainCamera>(() => new MainCamera());
-    public static MainCamera Instance
-    {
-        get
-        {
-            return lazy.Value;
-        }
-    }
+    public static MainCamera Instance { get { return lazy.Value; }}
 
     public void InitMainCamera(GameWindow _window, PlayableCharacter player)
     {
-        coords = player.GetCoords();
-        offset = new Vector2(_window.ClientBounds.Width/2, _window.ClientBounds.Height/2 + 175);
+        coords = player.Coords;
+        offset = new Vector2(_window.ClientBounds.Width/2, _window.ClientBounds.Height/2 + 150);
     }
 
     public void MoveToFollowPlayer(PlayableCharacter player)
     {
-        coords = Vector2.Subtract(player.GetCoords(), offset);
+        coords = Vector2.Subtract(player.Coords, offset);
     }
 
     public Vector2 TransformToView(Vector2 vec2)

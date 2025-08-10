@@ -36,7 +36,7 @@ public class Client : Game, INetEventListener {
 
     // Player fields
     private Texture2D playerTex;
-    private Vector2 playerBaseVelocity;
+    private Vector2 playerVelocity;
     private float deltaTime;
 
     public Client()
@@ -141,7 +141,7 @@ public class Client : Game, INetEventListener {
         foreach (CasinoMachine m_CasinoMachine in casinoMachines)
         {
             _spriteBatch.Draw(m_CasinoMachine.GetTex(),
-                            _mainCamera.TransformToView(m_CasinoMachine.GetCoords()),
+                            _mainCamera.TransformToView(m_CasinoMachine.Coords),
                             null,
                             Color.White,
                             0.0f,
@@ -203,9 +203,9 @@ public class Client : Game, INetEventListener {
                 }
             }
         }
-        foreach (CasinoMachineState casino_machine_state in packet.casinoMachineStates)
+        foreach (CasinoMachineState m_casinoMachineState in packet.casinoMachineStates)
         {
-            casinoMachines[(int)casino_machine_state.machineNum].SetState(casino_machine_state);
+            casinoMachines[(int)m_casinoMachineState.machineNum].Coords = m_casinoMachineState.coords;
         }
     }
 
@@ -254,18 +254,18 @@ public class Client : Game, INetEventListener {
     public void OnJoinAccept(JoinAcceptPacket packet) {
         Console.WriteLine($"Join accepted by server (pid: {packet.playerState.pid})");
         gameArea = packet.gameArea;
-        playerBaseVelocity = packet.playerBaseVelocity;
+        playerVelocity = packet.playerVelocity;
         player1 = new PlayableCharacter(packet.playerState.pid,
                             packet.playerState.username,
                             playerTex,
                             packet.playerState.ges.coords,
-                            playerBaseVelocity,
+                            playerVelocity,
                             packet.playerHitbox,
                             true);
 
         foreach (PlatformState platformState in packet.platformStates)
         {
-            platforms.Add(new Platform(platformState.platNum, platformTex, platformState.L, platformState.R));
+            platforms.Add(new Platform(platformState.platNum, platformTex, platformState.TL, platformState.BR));
         }
         foreach (CasinoMachineState casinoMachineState in packet.casinoMachineStates)
         {
@@ -280,7 +280,7 @@ public class Client : Game, INetEventListener {
                     other_player_state.username,
                     playerTex,
                     other_player_state.ges.coords,
-                    playerBaseVelocity,
+                    playerVelocity,
                     packet.playerHitbox,
                     true));
             }

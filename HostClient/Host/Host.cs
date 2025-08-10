@@ -25,6 +25,7 @@ public class Host : Game, INetEventListener
 
     // Game fields
     Properties _gameProperties;
+    private CollisionSystem collisionSystem;
     MainCamera _mainCamera = MainCamera.Instance;
     private GraphicsDeviceManager _graphics;
     private SpriteBatch _spriteBatch;
@@ -36,7 +37,6 @@ public class Host : Game, INetEventListener
     // Player loading info fields
     private Texture2D playerTex;
     private Vector2 playerOrigin;
-    private Vector2 playerBaseVelocity;
 
     // Host player
     private string username = "PENIS";
@@ -102,7 +102,6 @@ public class Host : Game, INetEventListener
         // player initialisation
         playerTex = Content.Load<Texture2D>(_gameProperties.get("player.image"));
         playerOrigin = new Vector2(0, 0);
-        playerBaseVelocity = new Vector2(float.Parse(_gameProperties.get("playerMaxVelocity.x")), float.Parse(_gameProperties.get("playerMaxVelocity.y")));
 
         // casino machine generation
         casinoMachines = new List<CasinoMachine>();
@@ -115,10 +114,21 @@ public class Host : Game, INetEventListener
                             username,
                             playerTex,
                             playerOrigin,
-                            playerBaseVelocity,
+                            Vector2.Zero,
                             new Rectangle(playerOrigin.ToPoint(), new Point(playerTex.Bounds.Width, playerTex.Bounds.Height)),
                             true);
-                            
+
+        /* 
+        Passing references of each player into level for (hopefully) efficient collision detection later
+        List<PlayableCharacter> m_levelPlayerRefs = new List<PlayableCharacter>() { player1 };
+        foreach (NetworkPlayer m_np in networkPlayers.Values)
+        {
+            m_levelPlayerRefs.Add(m_np.Player);
+        }
+        */
+
+        collisionSystem = new CollisionSystem(gameArea, platforms, casinoMachines);
+
         _mainCamera.InitMainCamera(Window, player1);
     }
 
@@ -131,14 +141,7 @@ public class Host : Game, INetEventListener
         // Check for client packets
         server.PollEvents();
 
-        if (Keyboard.GetState().IsKeyDown(Keys.A))
-        {
-            player1.Coords = player1.Coords + new Vector2(-player1.Velocity.X,0) * deltaTime;
-        }
-        if (Keyboard.GetState().IsKeyDown(Keys.D))
-        {
-            player1.Coords = player1.Coords + new Vector2(player1.Velocity.X,0) * deltaTime;
-        }
+        collisionSystem.TryMovePlayer(player1, Keyboard.GetState(), deltaTime);
 
         foreach (KeyValuePair<uint, NetworkPlayer> entry in networkPlayers)
         {
@@ -202,11 +205,12 @@ public class Host : Game, INetEventListener
         foreach (CasinoMachine m_CasinoMachine in casinoMachines)
         {
             _spriteBatch.Draw(m_CasinoMachine.GetTex(),
-                            _mainCamera.TransformToView(m_CasinoMachine.GetCoords()),
+                            _mainCamera.TransformToView(m_CasinoMachine.Coords),
                             null,
                             Color.White,
                             0.0f,
-                            new Vector2(m_CasinoMachine.GetTex().Bounds.Width/2, m_CasinoMachine.GetTex().Bounds.Height/2),
+                            Vector2.Zero,
+                            //new Vector2(m_CasinoMachine.GetTex().Bounds.Width/2, m_CasinoMachine.GetTex().Bounds.Height/2),
                             ratio,
                             0,
                             0);
@@ -226,7 +230,8 @@ public class Host : Game, INetEventListener
                                 null,
                                 Color.White,
                                 0.0f,
-                                new Vector2(m_PlatTexWidth/2, m_PlatTexWidth/2),
+                                Vector2.Zero,
+                                //new Vector2(m_PlatTexWidth/2, m_PlatTexWidth/2),
                                 ratio,
                                 0,
                                 0);
@@ -273,7 +278,7 @@ public class Host : Game, INetEventListener
             packet.username,
             playerTex,
             playerOrigin,
-            playerBaseVelocity,
+            Vector2.Zero,
             new Rectangle(playerOrigin.ToPoint(), new Point(playerTex.Bounds.Width, playerTex.Bounds.Height)),
             true)
         );
@@ -281,7 +286,7 @@ public class Host : Game, INetEventListener
 
         SendPacket(new JoinAcceptPacket { playerState = m_NewNetPlayer.Player.GetPlayerState(),
                                         playerHitbox = new Rectangle(m_NewNetPlayer.Player.Coords.ToPoint(), new Point(playerTex.Bounds.Width, playerTex.Bounds.Height)),
-                                        playerBaseVelocity = playerBaseVelocity,
+                                        playerVelocity = Vector2.Zero,
                                         platformStates = m_platformStates,
                                         otherPlayerStates = m_otherPlayerStates,
                                         casinoMachineStates = m_CasinoMachineStates},

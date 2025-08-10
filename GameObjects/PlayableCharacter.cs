@@ -2,11 +2,35 @@ using LiteNetLib.Utils;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 
-public class PlayableCharacter : GameEntity, IDrawable
+public class PlayableCharacter : GameEntity, IDrawable, IJump
 {
+    public float InitialJumpVelocity = 200f;
+    private static float standardJumpSquatTime = 0.1f;
     private uint pid;
     private string username;
     private Texture2D tex;
+    private float mass = 5f;
+    public float Mass { get => mass; set => mass = value; }
+    // Jump data
+    private bool inJumpSquat = false;
+    private float jumpSquatTimer = standardJumpSquatTime;
+    private bool inJump = false;
+    private float jumpTimer = 0f;
+    public bool InJumpSquat { get => inJumpSquat; }
+    public float JumpSquatTimer { get => jumpSquatTimer; set => jumpSquatTimer = value; }
+    public bool InJump { get => inJump;
+                         set
+                        { if (!inJump && inJumpSquat && value && Velocity.Y <= 0f)
+                            {
+                                // Reset for next jump
+                                InJumpSquat = false;
+                                JumpSquatTimer = standardJumpSquatTime;
+                                inJump = true;
+                            }
+                            else if (!inJumpSquat && value && Velocity.Y <= 0f)
+                            {
+                                InJumpSquat = true;
+                            }}}
 
     public PlayableCharacter(uint pid, string username, Texture2D tex, Vector2 coords, Vector2 velocity, Rectangle hitbox, bool awake)
     : base(coords, velocity, hitbox, awake)

@@ -2,21 +2,15 @@ using System;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 
-public class PlatformFactory
+public class PlatformFactory(Texture2D platTex)
 {
-    private Texture2D platTex;
-    private Random rand;
-    public PlatformFactory(Texture2D platTex)
-    {
-        this.platTex = platTex;
-        rand = new Random();
-    }
+    private readonly Texture2D platTex = platTex;
+    private readonly Random rand = new();
 
-    public Platform GeneratePlatform(uint platNum, Vector2 leftSide, int minLen, int maxLen)
+    public Platform GeneratePlatform(uint platNum, Vector2 topLeft, int minLen, int maxLen)
     {
-        Vector2 L = new Vector2(leftSide.X, leftSide.Y);
-        Vector2 R = new Vector2(L.X + (int)(rand.NextDouble() * (maxLen - minLen)) + minLen, L.Y);
+        Vector2 botRight = new(topLeft.X + (int)(rand.NextDouble() * (maxLen - minLen)) + minLen, topLeft.Y);
 
-        return new Platform(platNum, platTex, L, R);
+        return new Platform(platNum, platTex, topLeft, botRight);
     }
 }

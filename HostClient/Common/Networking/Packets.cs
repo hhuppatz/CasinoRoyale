@@ -10,7 +10,7 @@ public class JoinAcceptPacket {
     public Rectangle gameArea { get; set; }
     public Rectangle playerHitbox { get; set; }
     public PlayerState playerState { get; set; }
-    public Vector2 playerBaseVelocity { get; set; }
+    public Vector2 playerVelocity { get; set; }
     public PlayerState[] otherPlayerStates { get; set; }
     public PlatformState[] platformStates { get; set; }
     public CasinoMachineState[] casinoMachineStates { get; set; }

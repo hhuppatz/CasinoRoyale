@@ -6,20 +6,20 @@ using Microsoft.Xna.Framework.Graphics;
 public class Platform : IDrawable, IHitbox
 {
     private uint platNum;
-    private Vector2 L;
-    private Vector2 R;
+    private Vector2 TL;
+    private Vector2 BR;
     private Texture2D tex;
     private event EventHandler<PlatformMovementEventArgs> MovementEvent;
     private Rectangle _hitbox;
     public Rectangle Hitbox { get => _hitbox; set => _hitbox = value; }
 
-    public Platform(uint platNum, Texture2D tex, Vector2 L, Vector2 R)
+    public Platform(uint platNum, Texture2D tex, Vector2 TL, Vector2 BR)
     {
         this.tex = tex;
         this.platNum = platNum;
-        this.L = L;
-        this.R = R;
-        Hitbox = new Rectangle(L.ToPoint() - new Point(tex.Bounds.Width/2, tex.Bounds.Height/2), new Point(tex.Bounds.Width, tex.Bounds.Height));
+        this.TL = TL;
+        this.BR = BR;
+        Hitbox = new Rectangle(TL.ToPoint(), BR.ToPoint() - TL.ToPoint());
         MovementEvent += UpdateHitbox;
         MovementEvent += UpdateRCoords;
     }
@@ -28,24 +28,24 @@ public class Platform : IDrawable, IHitbox
     {
         return new PlatformState {
             platNum = platNum,
-            L = L,
-            R = R
+            TL = TL,
+            BR = BR
         };
     }
 
     public Vector2 GetLCoords()
     {
-        return L;
+        return TL;
     }
 
     public Vector2 GetRCoords()
     {
-        return R;
+        return BR;
     }
 
     public int GetWidth()
     {
-        return Math.Abs((int)L.X - (int)R.X);
+        return Math.Abs((int)TL.X - (int)BR.X);
     }
 
     public Texture2D GetTex()
@@ -55,7 +55,7 @@ public class Platform : IDrawable, IHitbox
 
     public Vector2 GetCoords()
     {
-        return L;
+        return TL;
     }
 
     public void SetTex(Texture2D tex)
@@ -65,7 +65,7 @@ public class Platform : IDrawable, IHitbox
 
     public void SetCoords(Vector2 coords)
     {
-        if (!L.Equals(coords))
+        if (!TL.Equals(coords))
         {
             SetLCoords(coords);
         }
@@ -78,14 +78,13 @@ public class Platform : IDrawable, IHitbox
 
     private void SetLCoords(Vector2 coords)
     {
-        float platLen = R.X - L.X;
-        L = coords;
-        OnMovement(new PlatformMovementEventArgs { coords = coords, length = platLen });
+        TL = coords;
+        OnMovement(new PlatformMovementEventArgs { coords = coords, length = GetWidth() });
     }
 
     private void UpdateRCoords(object s, PlatformMovementEventArgs e)
     {
-        R = new Vector2(e.coords.X + e.length, e.coords.Y);
+        BR = new Vector2(e.coords.X + e.length, e.coords.Y);
     }
 
     private void UpdateHitbox(object s, PlatformMovementEventArgs e)
@@ -101,17 +100,17 @@ public class Platform : IDrawable, IHitbox
 public struct PlatformState: INetSerializable
 {
     public uint platNum;
-    public Vector2 L;
-    public Vector2 R;
+    public Vector2 TL;
+    public Vector2 BR;
     public void Serialize(NetDataWriter writer) {
         writer.Put(platNum);
-        writer.Put(L);
-        writer.Put(R);
+        writer.Put(TL);
+        writer.Put(BR);
     }
     public void Deserialize(NetDataReader reader) {
         platNum = reader.GetUInt();
-        L = reader.GetVector2();
-        R = reader.GetVector2();
+        TL = reader.GetVector2();
+        BR = reader.GetVector2();
     }
 }
 

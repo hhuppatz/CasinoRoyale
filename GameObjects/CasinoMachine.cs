@@ -2,20 +2,21 @@ using LiteNetLib.Utils;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 
-public class CasinoMachine
+public class CasinoMachine : IObject, IHitbox
 {
     private readonly Texture2D tex;
-    private CasinoMachineState machineState;
+    private readonly uint machineNum;
+    private Vector2 _coords;
+    public Vector2 Coords { get => _coords; set => _coords = value; }
+    private Rectangle _hitbox;
+    public Rectangle Hitbox { get => _hitbox; set => _hitbox = value; }
+
     public CasinoMachine(uint machineNum, Texture2D tex, Vector2 coords)
     {
         this.tex = tex;
-        machineState.coords = coords;
-        machineState.machineNum = machineNum;
-    }
-
-    public void SetState(CasinoMachineState m_MachineState)
-    {
-        machineState = m_MachineState;
+        this.machineNum = machineNum;
+        _coords = coords;
+        _hitbox = new Rectangle(coords.ToPoint(), new Point(tex.Bounds.Width, tex.Bounds.Height));
     }
 
     public Texture2D GetTex()
@@ -23,14 +24,12 @@ public class CasinoMachine
         return tex;
     }
 
-    public Vector2 GetCoords()
-    {
-        return machineState.coords;
-    }
-
     public CasinoMachineState GetState()
     {
-        return machineState;
+        return new CasinoMachineState{
+            machineNum = machineNum,
+            coords = Coords
+        };
     }
 }
 

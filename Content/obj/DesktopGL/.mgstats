@@ -1,0 +1,4 @@
+Source File,Dest File,Processor Type,Content Type,Source File Size,Dest File Size,Build Seconds
+"c:/Users/harry/Personal Projects/CasinoRoyaleServer/Content/ball.png","c:/Users/harry/Personal Projects/CasinoRoyaleServer/Content/bin/DesktopGL/ball.xnb","TextureProcessor","Texture2DContent",8368,16469,0.0854436
+"c:/Users/harry/Personal Projects/CasinoRoyaleServer/Content/CasinoFloor1.png","c:/Users/harry/Personal Projects/CasinoRoyaleServer/Content/bin/DesktopGL/CasinoFloor1.xnb","TextureProcessor","Texture2DContent",159,4181,0.1204813
+"c:/Users/harry/Personal Projects/CasinoRoyaleServer/Content/CasinoMachine1.png","c:/Users/harry/Personal Projects/CasinoRoyaleServer/Content/bin/DesktopGL/CasinoMachine1.xnb","TextureProcessor","Texture2DContent",774,16469,0.0051489
