@@ -39,7 +39,7 @@ public class Host : Game, INetEventListener
     private Vector2 playerOrigin;
 
     // Host player
-    private string username = "PENIS";
+    private string username = "HAZZA";
     private PlayableCharacter player1;
 
     public Host()

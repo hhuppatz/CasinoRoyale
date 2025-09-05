@@ -1,7 +1,8 @@
 using LiteNetLib.Utils;
 using Microsoft.Xna.Framework;
 
-public static class SerializingExtensions {
+public static class SerializingExtensions
+{
     public static void Put(this NetDataWriter writer, Vector2 vector) {
         writer.Put(vector.X);
         writer.Put(vector.Y);

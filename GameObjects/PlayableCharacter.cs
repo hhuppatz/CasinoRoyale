@@ -15,7 +15,7 @@ public class PlayableCharacter : GameEntity, IDrawable, IJump
     private bool inJumpSquat = false;
     private float jumpSquatTimer = standardJumpSquatTime;
     private bool inJump = false;
-    private float jumpTimer = 0f;
+    //private float jumpTimer = 0f;
     public bool InJumpSquat { get => inJumpSquat; }
     public float JumpSquatTimer { get => jumpSquatTimer; set => jumpSquatTimer = value; }
     public bool InJump { get => inJump;
@@ -23,14 +23,16 @@ public class PlayableCharacter : GameEntity, IDrawable, IJump
                         { if (!inJump && inJumpSquat && value && Velocity.Y <= 0f)
                             {
                                 // Reset for next jump
-                                InJumpSquat = false;
+                                inJumpSquat = false;
                                 JumpSquatTimer = standardJumpSquatTime;
                                 inJump = true;
                             }
                             else if (!inJumpSquat && value && Velocity.Y <= 0f)
                             {
-                                InJumpSquat = true;
+                                inJumpSquat = true;
                             }}}
+
+    bool IJump.InJumpSquat { get => InJumpSquat; set => throw new System.NotImplementedException(); }
 
     public PlayableCharacter(uint pid, string username, Texture2D tex, Vector2 coords, Vector2 velocity, Rectangle hitbox, bool awake)
     : base(coords, velocity, hitbox, awake)

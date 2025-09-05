@@ -1,7 +1,8 @@
 // Packet classes
 using Microsoft.Xna.Framework;
 
-public class JoinPacket {
+public class JoinPacket
+{
     public string username { get; set; }
 }
 
