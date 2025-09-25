@@ -1,8 +1,12 @@
 using System;
 using LiteNetLib.Utils;
 using Microsoft.Xna.Framework;
+using CasinoRoyale.GameObjects.Interfaces;
+using CasinoRoyale.Players.Common.Networking;
 
-public class GameEntity : IObject, IHitbox, IMovement
+namespace CasinoRoyale.GameObjects
+{
+    public class GameEntity : IObject, IHitbox, IMovement
 {
     private bool awake;
     private event EventHandler<EntityMovementEventArgs> MovementEvent;
@@ -77,7 +81,8 @@ public struct GameEntityState : INetSerializable
     }
 }
 
-public class EntityMovementEventArgs : EventArgs
-{
-    public Vector2 coords { get; set; }
+    public class EntityMovementEventArgs : EventArgs
+    {
+        public Vector2 coords { get; set; }
+    }
 }

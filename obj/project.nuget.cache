@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "8Fwl68h5FwA=",
+  "dgSpecHash": "0s9Ee0fl7p4=",
   "success": true,
-  "projectFilePath": "C:\\Users\\harry\\Personal Projects\\CasinoRoyaleServer\\CSharpFirstPerson.csproj",
+  "projectFilePath": "C:\\Users\\harry\\Personal Projects\\CasinoRoyaleServer\\CasinoRoyaleServer.csproj",
   "expectedPackageFiles": [
     "C:\\Users\\harry\\.nuget\\packages\\litenetlib\\1.2.0\\litenetlib.1.2.0.nupkg.sha512",
     "C:\\Users\\harry\\.nuget\\packages\\monogame.content.builder.task\\3.8.2.1105\\monogame.content.builder.task.3.8.2.1105.nupkg.sha512",

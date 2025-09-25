@@ -1,6 +1,9 @@
 using Microsoft.Xna.Framework;
 
-public interface IObject
+namespace CasinoRoyale.GameObjects.Interfaces
+{
+    public interface IObject
 {
     public Vector2 Coords { get; set; }
+}
 }

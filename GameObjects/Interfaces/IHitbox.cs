@@ -1,6 +1,8 @@
 using Microsoft.Xna.Framework;
 
-public interface IHitbox
+namespace CasinoRoyale.GameObjects.Interfaces
+{
+    public interface IHitbox
 {
     Rectangle Hitbox { get; set; }
 
@@ -9,4 +11,5 @@ public interface IHitbox
         return Hitbox.Intersects(c.Hitbox);
     }
 
+}
 }

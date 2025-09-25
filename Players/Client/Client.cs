@@ -8,8 +8,13 @@ using LiteNetLib.Utils;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
+using CasinoRoyale.GameObjects;
+using CasinoRoyale.GameObjects.Interfaces;
+using CasinoRoyale.Players.Common.Networking;
+using CasinoRoyale.Utils;
+using CasinoRoyale.Extensions;
 
-namespace CSharpFirstPerson
+namespace CasinoRoyale.Players.Client
 {
     public class Client : Game, INetEventListener {
         // Client fields
@@ -86,6 +91,9 @@ namespace CSharpFirstPerson
 
             JoinServer();
 
+            Properties _gameProperties = new Properties("app.properties");
+            CasinoRoyale.GameObjects.PhysicsSystem.Initialize(gameArea, platforms, casinoMachines, _gameProperties);
+
             // main camera initialisation
             _mainCamera.InitMainCamera(Window, player1);
         }
@@ -97,12 +105,16 @@ namespace CSharpFirstPerson
             // left is negative x, right positive
             if (Keyboard.GetState().IsKeyDown(Keys.A))
             {
-                player1.Coords = player1.Coords + new Vector2(-player1.Velocity.X,0) * deltaTime;
+                player1.Coords += new Vector2(-player1.Velocity.X,0) * deltaTime;
             }
             if (Keyboard.GetState().IsKeyDown(Keys.D))
             {
-                player1.Coords = player1.Coords + new Vector2(player1.Velocity.X,0) * deltaTime;
+                player1.Coords += new Vector2(player1.Velocity.X,0) * deltaTime;
             }
+
+            player1.TryMovePlayer(Keyboard.GetState(), deltaTime);
+            // Enforce movement rules from physics system
+            CasinoRoyale.GameObjects.PhysicsSystem.Instance.EnforceMovementRules(player1, Keyboard.GetState(), deltaTime);
 
             if (client != null) {
                 client.PollEvents();
@@ -118,7 +130,7 @@ namespace CSharpFirstPerson
             _mainCamera.MoveToFollowPlayer(player1);
 
             if (Keyboard.GetState().IsKeyDown(Keys.F11))
-                Resolution.ToggleFullscreen(Window, _graphics);
+                CasinoRoyale.Utils.Resolution.ToggleFullscreen(Window, _graphics);
 
             base.Update(gameTime);
 
@@ -132,7 +144,7 @@ namespace CSharpFirstPerson
         {
             GraphicsDevice.Clear(Color.DarkMagenta);
 
-            Vector2 ratio = Resolution.ratio;
+            Vector2 ratio = CasinoRoyale.Utils.Resolution.ratio;
             _mainCamera.ApplyRatio(ratio);
 
             // drawing sprites

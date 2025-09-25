@@ -1,10 +1,12 @@
 using Microsoft.Xna.Framework;
 
-// Taking inspiration of Verlet integration scheme and iterative methods
-// from "Advanced Character Physics" by Thomas Jakobsen of IO Interactive
+namespace CasinoRoyale.GameObjects.Interfaces
+{
+    // Taking inspiration of Verlet integration scheme and iterative methods
+    // from "Advanced Character Physics" by Thomas Jakobsen of IO Interactive
 
-// Utilising "velocity-less" bodies
-public interface IRigidBody : IObject
+    // Utilising "velocity-less" bodies
+    public interface IRigidBody : IObject
 {
     public Vector2 CoordsDash { get; set; }
     public float M { get;}
@@ -13,4 +15,5 @@ public interface IRigidBody : IObject
 
     public void VerletMove(float dt);
     public void SatisfyConstraints(Rectangle gameArea);
+}
 }

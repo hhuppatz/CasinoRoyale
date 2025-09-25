@@ -1,7 +1,10 @@
 using LiteNetLib.Utils;
 using Microsoft.Xna.Framework;
+using CasinoRoyale.GameObjects;
 
-public static class SerializingExtensions
+namespace CasinoRoyale.Players.Common.Networking
+{
+    public static class SerializingExtensions
 {
     public static void Put(this NetDataWriter writer, Vector2 vector) {
         writer.Put(vector.X);
@@ -32,4 +35,5 @@ public static class SerializingExtensions
     public static Rectangle GetRectangle(this NetDataReader reader) {
         return new Rectangle(reader.GetInt(), reader.GetInt(), reader.GetInt(), reader.GetInt());
     }
+}
 }

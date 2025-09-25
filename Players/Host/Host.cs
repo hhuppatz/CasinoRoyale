@@ -8,26 +8,29 @@ using LiteNetLib.Utils;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
+using CasinoRoyale.GameObjects;
+using CasinoRoyale.Players.Common;
+using CasinoRoyale.Players.Common.Networking;
+using CasinoRoyale.Extensions;
 
-namespace CSharpFirstPerson;
-
-public class Host : Game, INetEventListener
+namespace CasinoRoyale.Players.Host
+{
+    public class Host : Game, INetEventListener
 {
     // Server fields
-    private int PORT_NUM = 12345;
+    private readonly int PORT_NUM = 12345;
     private NetManager server;
     private NetDataWriter writer;
     private NetPacketProcessor packetProcessor;
-    private Dictionary<uint, NetworkPlayer> networkPlayers = new Dictionary<uint, NetworkPlayer>();
+    private Dictionary<uint, NetworkPlayer> networkPlayers = [];
     private float serverUpdatetimer = 0f;
-    private uint MAX_PLAYERS = 6;
+    private readonly uint MAX_PLAYERS = 6;
     private PlayerIDs playerIDs;
 
     // Game fields
-    Properties _gameProperties;
-    private CollisionSystem collisionSystem;
-    MainCamera _mainCamera = MainCamera.Instance;
-    private GraphicsDeviceManager _graphics;
+    private readonly Properties _gameProperties;
+    private readonly MainCamera _mainCamera = MainCamera.Instance;
+    private readonly GraphicsDeviceManager _graphics;
     private SpriteBatch _spriteBatch;
     private Rectangle gameArea;
     private List<Platform> platforms;
@@ -58,7 +61,7 @@ public class Host : Game, INetEventListener
         // Initialise server
         writer = new NetDataWriter();
         packetProcessor = new NetPacketProcessor();
-        networkPlayers = new Dictionary<uint, NetworkPlayer>();
+        networkPlayers = [];
 
         packetProcessor.RegisterNestedType((w, v) => w.Put(v), reader => reader.GetVector2());
         packetProcessor.RegisterNestedType((w, v) => w.Put(v), reader => reader.GetGES());
@@ -90,6 +93,12 @@ public class Host : Game, INetEventListener
                                  int.Parse(_gameProperties.get("gameArea.width")),
                                  int.Parse(_gameProperties.get("gameArea.height")));
 
+        // player initialisation
+        playerTex = Content.Load<Texture2D>(_gameProperties.get("player.image"));
+        int playerSpawnBuffer = playerTex.Height * 2; // Keep area directly around player free
+        playerOrigin = new Vector2(0, gameArea.Y + gameArea.Height - playerSpawnBuffer); // Spawn on the floor, above the buffer zone
+        Console.WriteLine($"Player spawn: gameArea={gameArea}, playerSpawnBuffer={playerSpawnBuffer}, playerOrigin={playerOrigin}");
+
         // game world initialisation
         platforms = PlatformLayout.GenerateStandardRandPlatLayout(Content.Load<Texture2D>(_gameProperties.get("casinoFloor.image.1")),
                                                                 gameArea,
@@ -97,14 +106,21 @@ public class Host : Game, INetEventListener
                                                                 200,
                                                                 50,
                                                                 100,
-                                                                70);
-
-        // player initialisation
-        playerTex = Content.Load<Texture2D>(_gameProperties.get("player.image"));
-        playerOrigin = new Vector2(0, 0);
+                                                                70,
+                                                                playerSpawnBuffer);
+        
+        // Debug: Print platform hitboxes
+        var platformTexture = Content.Load<Texture2D>(_gameProperties.get("casinoFloor.image.1"));
+        Console.WriteLine($"Platform texture dimensions: {platformTexture.Width}x{platformTexture.Height}");
+        Console.WriteLine($"Generated {platforms.Count} platforms:");
+        for (int i = 0; i < Math.Min(5, platforms.Count); i++)
+        {
+            var platform = platforms[i];
+            Console.WriteLine($"Platform {i}: Hitbox={platform.Hitbox}, Coords={platform.GetCoords()}");
+        }
 
         // casino machine generation
-        casinoMachines = new List<CasinoMachine>();
+        casinoMachines = [];
         casinoMachineFactory = new CasinoMachineFactory(Content.Load<Texture2D>(_gameProperties.get("casinoMachine.image.1")));
         
         casinoMachines = casinoMachineFactory.SpawnCasinoMachines();
@@ -117,17 +133,12 @@ public class Host : Game, INetEventListener
                             Vector2.Zero,
                             new Rectangle(playerOrigin.ToPoint(), new Point(playerTex.Bounds.Width, playerTex.Bounds.Height)),
                             true);
+        
+        // Debug: Print player hitbox info
+        Console.WriteLine($"Player texture dimensions: {playerTex.Width}x{playerTex.Height}");
+        Console.WriteLine($"Player hitbox: {player1.Hitbox}, Player coords: {player1.Coords}");
 
-        /* 
-        Passing references of each player into level for (hopefully) efficient collision detection later
-        List<PlayableCharacter> m_levelPlayerRefs = new List<PlayableCharacter>() { player1 };
-        foreach (NetworkPlayer m_np in networkPlayers.Values)
-        {
-            m_levelPlayerRefs.Add(m_np.Player);
-        }
-        */
-
-        collisionSystem = new CollisionSystem(gameArea, platforms, casinoMachines);
+        CasinoRoyale.GameObjects.PhysicsSystem.Initialize(gameArea, platforms, casinoMachines, _gameProperties);
 
         _mainCamera.InitMainCamera(Window, player1);
     }
@@ -141,18 +152,21 @@ public class Host : Game, INetEventListener
         // Check for client packets
         server.PollEvents();
 
-        collisionSystem.TryMovePlayer(player1, Keyboard.GetState(), deltaTime);
+        player1.TryMovePlayer(Keyboard.GetState(), deltaTime);
+        // Enforce movement rules from physics system
+        CasinoRoyale.GameObjects.PhysicsSystem.Instance.EnforceMovementRules(player1, Keyboard.GetState(), deltaTime);
 
         foreach (KeyValuePair<uint, NetworkPlayer> entry in networkPlayers)
         {
-            IHitbox m_other = entry.Value.Player;
-            if (m_other.CollidedWith(player1))
+            PlayableCharacter m_other = entry.Value.Player;
+            if (m_other.Hitbox.Intersects(player1.Hitbox))
             {
                 Console.WriteLine(entry.Value.Player.GetID());
             }
         }
 
         // Check player states and update according to received messages
+        
         // Host player
         PlayerState[] m_OtherPlayerStates = new PlayerState[networkPlayers.Count + 1];
         m_OtherPlayerStates[0] = new PlayerState {
@@ -196,7 +210,7 @@ public class Host : Game, INetEventListener
     {
         GraphicsDevice.Clear(Color.DarkMagenta);
 
-        Vector2 ratio = Resolution.ratio;
+        Vector2 ratio = CasinoRoyale.Utils.Resolution.ratio;
         _mainCamera.ApplyRatio(ratio);
 
         // drawing sprites
@@ -210,7 +224,6 @@ public class Host : Game, INetEventListener
                             Color.White,
                             0.0f,
                             Vector2.Zero,
-                            //new Vector2(m_CasinoMachine.GetTex().Bounds.Width/2, m_CasinoMachine.GetTex().Bounds.Height/2),
                             ratio,
                             0,
                             0);
@@ -230,8 +243,7 @@ public class Host : Game, INetEventListener
                                 null,
                                 Color.White,
                                 0.0f,
-                                Vector2.Zero,
-                                //new Vector2(m_PlatTexWidth/2, m_PlatTexWidth/2),
+                                new Vector2(m_PlatTexWidth/2, m_PlatTexWidth/2),
                                 ratio,
                                 0,
                                 0);
@@ -365,14 +377,17 @@ public class Host : Game, INetEventListener
             return;
         }
 
-        NetworkPlayer m_LeavingPlayer;
-        if (networkPlayers.TryGetValue((uint)peer.Id, out m_LeavingPlayer)) {
-            foreach (NetworkPlayer m_NetPlayer in networkPlayers.Values) {
-                if (m_NetPlayer.Player.GetPlayerState().pid != m_LeavingPlayer.Player.GetPlayerState().pid) {
+        if (networkPlayers.TryGetValue((uint)peer.Id, out NetworkPlayer m_LeavingPlayer))
+        {
+            foreach (NetworkPlayer m_NetPlayer in networkPlayers.Values)
+            {
+                if (m_NetPlayer.Player.GetPlayerState().pid != m_LeavingPlayer.Player.GetPlayerState().pid)
+                {
                     SendPacket(new PlayerLeftGamePacket { pid = m_LeavingPlayer.Player.GetPlayerState().pid }, m_NetPlayer.Peer, DeliveryMethod.ReliableOrdered);
                 }
             }
             networkPlayers.Remove((uint)peer.Id);
+        }
         }
     }
 }

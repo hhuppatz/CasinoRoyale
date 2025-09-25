@@ -1,6 +1,8 @@
 using System.Collections.Generic;
 
-public class PlayerIDs
+namespace CasinoRoyale.Players.Common
+{
+    public class PlayerIDs
     {
         private uint MAX_PLAYERS;
         private Dictionary<uint, bool> ids;
@@ -51,3 +53,4 @@ public class PlayerIDs
             return ids[id];
         }
     }
+}

@@ -8,13 +8,13 @@ try
     if (s.Equals("Host"))
     {
         Console.WriteLine("Starting as Host (Server)...");
-        using var host = new CSharpFirstPerson.Host();
+        using var host = new CasinoRoyale.Players.Host.Host();
         host.Run();
     }
     else
     {
         Console.WriteLine("Starting as Client...");
-        using var client = new CSharpFirstPerson.Client();
+        using var client = new CasinoRoyale.Players.Client.Client();
         client.Run();
     }
 }

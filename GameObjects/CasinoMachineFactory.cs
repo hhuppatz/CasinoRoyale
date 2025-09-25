@@ -2,7 +2,9 @@ using System.Collections.Generic;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 
-public class CasinoMachineFactory
+namespace CasinoRoyale.GameObjects
+{
+    public class CasinoMachineFactory
 {
     private readonly Texture2D machineTex;
     public CasinoMachineFactory(Texture2D machineTex)
@@ -19,4 +21,5 @@ public class CasinoMachineFactory
         return machines;
     }
 
+}
 }

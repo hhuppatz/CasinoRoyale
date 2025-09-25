@@ -1,9 +1,12 @@
 using Microsoft.Xna.Framework;
 
-public static class Vector2Extensions
+namespace CasinoRoyale.Utils
 {
-    public static Point ToPoint(this Vector2 vec)
+    public static class Vector2Extensions
     {
-        return new Point((int)vec.X, (int)vec.Y);
+        public static Point ToPoint(this Vector2 vec)
+        {
+            return new Point((int)vec.X, (int)vec.Y);
+        }
     }
 }

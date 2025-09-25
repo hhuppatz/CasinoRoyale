@@ -287,9 +287,9 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "C:\\Users\\harry\\Personal Projects\\CasinoRoyaleServer\\CSharpFirstPerson.csproj",
-      "projectName": "CSharpFirstPerson",
-      "projectPath": "C:\\Users\\harry\\Personal Projects\\CasinoRoyaleServer\\CSharpFirstPerson.csproj",
+      "projectUniqueName": "C:\\Users\\harry\\Personal Projects\\CasinoRoyaleServer\\CasinoRoyaleServer.csproj",
+      "projectName": "CasinoRoyaleServer",
+      "projectPath": "C:\\Users\\harry\\Personal Projects\\CasinoRoyaleServer\\CasinoRoyaleServer.csproj",
       "packagesPath": "C:\\Users\\harry\\.nuget\\packages\\",
       "outputPath": "C:\\Users\\harry\\Personal Projects\\CasinoRoyaleServer\\obj\\",
       "projectStyle": "PackageReference",

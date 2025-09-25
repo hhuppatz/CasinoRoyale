@@ -3,7 +3,9 @@ using System.Collections.Generic;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 
-public static class PlatformLayout
+namespace CasinoRoyale.GameObjects
+{
+    public static class PlatformLayout
 {
     /*
         Returns randomly generated plaform layout as follows:
@@ -19,17 +21,19 @@ public static class PlatformLayout
         Until each 'rectangle' of game area is given chance to spawn platform.
         Thuggish implementation, will likely replace later.
     */
-    public static List<Platform> GenerateStandardRandPlatLayout(Texture2D platTex, Rectangle gameArea, int minLen, int maxLen, int horizontalDistApart, int verticalDistApart, int platSpawnChance)
+    public static List<Platform> GenerateStandardRandPlatLayout(Texture2D platTex, Rectangle gameArea, int minLen, int maxLen, int horizontalDistApart, int verticalDistApart, int platSpawnChance, int playerSpawnBuffer = 200)
     {
         uint platNum = 0;
         Random rand = new Random();
         PlatformFactory platformFactory = new PlatformFactory(platTex);
         List<Platform> platforms = new List<Platform>();
 
-        int i = gameArea.Y;
+        // Start platform generation above the player spawn area
+        int i = gameArea.Y + playerSpawnBuffer;
         int j = gameArea.X;
         
-        while (i < gameArea.Y + gameArea.Height - 2000)
+        // Only generate platforms in the upper portion, leaving bottom clear for player
+        while (i < gameArea.Y + gameArea.Height - playerSpawnBuffer)
         {
             while (j < gameArea.X + gameArea.Width)
             {
@@ -54,4 +58,5 @@ public static class PlatformLayout
         return platforms;
     }
 
+}
 }

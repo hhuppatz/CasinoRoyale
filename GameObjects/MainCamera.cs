@@ -1,7 +1,10 @@
 using Microsoft.Xna.Framework;
 using System;
+using CasinoRoyale.GameObjects.Interfaces;
 
-public sealed class MainCamera
+namespace CasinoRoyale.GameObjects
+{
+    public sealed class MainCamera
 {
     private Vector2 coords;
     private Vector2 offset;
@@ -45,4 +48,5 @@ public sealed class MainCamera
     {
         return coords;
     }
+}
 }

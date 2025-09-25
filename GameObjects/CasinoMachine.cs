@@ -1,8 +1,12 @@
 using LiteNetLib.Utils;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
+using CasinoRoyale.GameObjects.Interfaces;
+using CasinoRoyale.Players.Common.Networking;
 
-public class CasinoMachine : IObject, IHitbox
+namespace CasinoRoyale.GameObjects
+{
+    public class CasinoMachine : IObject, IHitbox
 {
     private readonly Texture2D tex;
     private readonly uint machineNum;
@@ -45,4 +49,5 @@ public struct CasinoMachineState : INetSerializable
         machineNum = reader.GetUInt();
         coords = reader.GetVector2();
     }
+}
 }

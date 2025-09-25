@@ -1,7 +1,10 @@
 // Packet classes
 using Microsoft.Xna.Framework;
+using CasinoRoyale.GameObjects;
 
-public class JoinPacket
+namespace CasinoRoyale.Players.Common.Networking
+{
+    public class JoinPacket
 {
     public string username { get; set; }
 }
@@ -34,6 +37,7 @@ public class PlayerJoinedGamePacket {
     public Rectangle new_player_hitbox { get; set; }
 }
 
-public class PlayerLeftGamePacket {
-    public uint pid { get; set; }
+    public class PlayerLeftGamePacket {
+        public uint pid { get; set; }
+    }
 }

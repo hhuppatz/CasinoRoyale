@@ -2,8 +2,12 @@ using System;
 using LiteNetLib.Utils;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
+using CasinoRoyale.GameObjects.Interfaces;
+using CasinoRoyale.Players.Common.Networking;
 
-public class Platform : IDrawable, IHitbox
+namespace CasinoRoyale.GameObjects
+{
+    public class Platform : CasinoRoyale.GameObjects.Interfaces.IDrawable, IHitbox
 {
     private uint platNum;
     private Vector2 TL;
@@ -19,7 +23,12 @@ public class Platform : IDrawable, IHitbox
         this.platNum = platNum;
         this.TL = TL;
         this.BR = BR;
-        Hitbox = new Rectangle(TL.ToPoint(), BR.ToPoint() - TL.ToPoint());
+        
+        // Create hitbox using full texture dimensions
+        int platformWidth = BR.ToPoint().X - TL.ToPoint().X;
+        int platformHeight = tex.Height;
+        
+        Hitbox = new Rectangle(TL.ToPoint().X, TL.ToPoint().Y, platformWidth, platformHeight);
         MovementEvent += UpdateHitbox;
         MovementEvent += UpdateRCoords;
     }
@@ -114,8 +123,9 @@ public struct PlatformState: INetSerializable
     }
 }
 
-public class PlatformMovementEventArgs : EventArgs
-{
-    public Vector2 coords { get; set; }
-    public float length { get; set; }
+    public class PlatformMovementEventArgs : EventArgs
+    {
+        public Vector2 coords { get; set; }
+        public float length { get; set; }
+    }
 }

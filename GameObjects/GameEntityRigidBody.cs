@@ -1,7 +1,10 @@
 using System;
 using Microsoft.Xna.Framework;
+using CasinoRoyale.GameObjects.Interfaces;
 
-public class GameEntityRigidBody : IRigidBody, IHitbox, IMovement
+namespace CasinoRoyale.GameObjects
+{
+    public class GameEntityRigidBody : IRigidBody, IHitbox, IMovement
 {
     private bool awake;
     private event EventHandler<EntityMovementEventArgs> MovementEvent;
@@ -72,4 +75,5 @@ public class GameEntityRigidBody : IRigidBody, IHitbox, IMovement
         CoordsDash = Coords;
         Coords = m_NewCoords;
     }
+}
 }
