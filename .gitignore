@@ -2,6 +2,7 @@
 Build/
 Distribution/
 Publish/
+Scripts/
 
 # Visual Studio / MonoGame
 .vs/
