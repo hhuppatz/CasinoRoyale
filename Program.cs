@@ -1,22 +1,12 @@
 ﻿using System;
 
 Console.WriteLine("Starting CasinoRoyaleServer...");
-Console.WriteLine("Type 'Host' to start as server, or 'Client' to start as client:");
-string s = Console.ReadLine();
+
 try
 {
-    if (s.Equals("Host"))
-    {
-        Console.WriteLine("Starting as Host (Server)...");
-        using var host = new CasinoRoyale.Players.Host.Host();
-        host.Run();
-    }
-    else
-    {
-        Console.WriteLine("Starting as Client...");
-        using var client = new CasinoRoyale.Players.Client.Client();
-        client.Run();
-    }
+    // Start the unified game
+    using var game = new CasinoRoyale.CasinoRoyaleGame();
+    game.Run();
 }
 catch (Exception ex)
 {

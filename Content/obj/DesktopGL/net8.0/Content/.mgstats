@@ -1,4 +1,5 @@
 Source File,Dest File,Processor Type,Content Type,Source File Size,Dest File Size,Build Seconds
+"C:/Users/harry/Personal Projects/CasinoRoyaleServer/Content/Arial.spritefont","C:/Users/harry/Personal Projects/CasinoRoyaleServer/Content/bin/DesktopGL/Content/Arial.xnb","FontDescriptionProcessor","SpriteFontContent",2140,70690,0.1838007
 "C:/Users/harry/Personal Projects/CasinoRoyaleServer/Content/ball.png","C:/Users/harry/Personal Projects/CasinoRoyaleServer/Content/bin/DesktopGL/Content/ball.xnb","TextureProcessor","Texture2DContent",8368,16469,0.1215218
 "C:/Users/harry/Personal Projects/CasinoRoyaleServer/Content/CasinoFloor1.png","C:/Users/harry/Personal Projects/CasinoRoyaleServer/Content/bin/DesktopGL/Content/CasinoFloor1.xnb","TextureProcessor","Texture2DContent",13091,1365,0.1334477
 "C:/Users/harry/Personal Projects/CasinoRoyaleServer/Content/CasinoMachine1.png","C:/Users/harry/Personal Projects/CasinoRoyaleServer/Content/bin/DesktopGL/Content/CasinoMachine1.xnb","TextureProcessor","Texture2DContent",774,16469,0.0037394

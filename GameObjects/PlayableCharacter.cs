@@ -1,3 +1,4 @@
+using System;
 using System.Linq;
 using LiteNetLib.Utils;
 using Microsoft.Xna.Framework;
@@ -8,28 +9,22 @@ using CasinoRoyale.Players.Common.Networking;
 
 namespace CasinoRoyale.GameObjects
 {
-    public class PlayableCharacter(uint pid, string username, Texture2D tex, Vector2 coords, Vector2 velocity, Rectangle hitbox, bool awake) : GameEntity(coords, velocity, hitbox, awake), CasinoRoyale.GameObjects.Interfaces.IDrawable, IJump
+    public class PlayableCharacter(uint pid, string username, Texture2D tex, Vector2 coords, Vector2 velocity, float mass, float initialJumpVelocity, float maxRunSpeed, Rectangle hitbox, bool awake) : GameEntity(coords, velocity, hitbox, awake), CasinoRoyale.GameObjects.Interfaces.IDrawable
 {
-    private static float standardJumpSquatTime = 0.1f;
     private readonly uint pid = pid;
     private readonly string username = username;
     private Texture2D tex = tex;
-    private float mass = 5f;
+    private float mass = mass;
     public float Mass { get => mass; set => mass = value; }
-    private float initialJumpVelocity = 120;
-    public float InitialJumpVelocity { get => initialJumpVelocity; set => initialJumpVelocity = value; }
-    private float maxRunSpeed = 240f;
-    public float MaxRunSpeed { get => maxRunSpeed; set => maxRunSpeed = value; }
-    // Jump data
-    private bool inJumpSquat = false;
-    private float jumpSquatTimer = standardJumpSquatTime;
-    private bool inJump = false;
-    //private float jumpTimer = 0f;
-    public bool InJumpSquat { get => inJumpSquat; }
-    public float JumpSquatTimer { get => jumpSquatTimer; set => jumpSquatTimer = value; }
-    public bool InJump { get => inJump; set => inJump = value; }
 
-    bool IJump.InJumpSquat { get => InJumpSquat; set => throw new System.NotImplementedException(); }
+    private float initialJumpVelocity = initialJumpVelocity;
+    public float InitialJumpVelocity { get => initialJumpVelocity; set => initialJumpVelocity = value; }
+
+    private float maxRunSpeed = maxRunSpeed;
+    public float MaxRunSpeed { get => maxRunSpeed; set => maxRunSpeed = value; }
+
+    private bool inJump = false;
+    public bool InJump { get => inJump; set => inJump = value; }
 
     public void TryMovePlayer(KeyboardState ks, float dt)
     {
@@ -51,17 +46,10 @@ namespace CasinoRoyale.GameObjects
         }
 
         // Update velocity according to forces and movement requests
-        PlayerUpdateVelocity(m_playerAttemptedJump, dt);
-
-        // Enforce movement rules from collision system
-        CasinoRoyale.GameObjects.PhysicsSystem.Instance.EnforceMovementRules(this, ks, dt);
-    }
-
-    public void PlayerUpdateVelocity(bool m_playerAttemptedJump, float dt)
-    {
-        // Apply gravity directly to player's velocity (frame-rate independent)
         UpdateJump(m_playerAttemptedJump);
-        UpdateGravity(dt);
+
+        // Enforce movement rules from physics system
+        CasinoRoyale.GameObjects.PhysicsSystem.Instance.EnforceMovementRules(this, dt);
     }
 
     public void UpdateJump(bool m_playerAttemptedJump)
@@ -77,12 +65,6 @@ namespace CasinoRoyale.GameObjects
         // Check if player has landed after falling (end jump state)
         if (InJump && Velocity.Y >= 0 && CasinoRoyale.GameObjects.PhysicsSystem.Instance.IsPlayerGrounded(this)) InJump = false;
 
-    }
-
-    public void UpdateGravity(float dt)
-    {
-        if (Velocity.Y < 0 || !CasinoRoyale.GameObjects.PhysicsSystem.Instance.IsPlayerGrounded(this))
-            Velocity += new Vector2(0, CasinoRoyale.GameObjects.PhysicsSystem.Instance.GRAVITY * Mass * dt);
     }
 
     // setters
@@ -116,7 +98,10 @@ namespace CasinoRoyale.GameObjects
         return new PlayerState {
             pid = pid,
             username = username,
-            ges = GetEntityState()
+            ges = GetEntityState(),
+            mass = mass,
+            initialJumpVelocity = initialJumpVelocity,
+            maxRunSpeed = maxRunSpeed
         };
     }
 
@@ -132,12 +117,18 @@ public struct PlayerState : INetSerializable
     public uint pid;
     public string username;
     public GameEntityState ges;
+    public float mass;
+    public float initialJumpVelocity;
+    public float maxRunSpeed;
 
-    public void Serialize(NetDataWriter writer)
+    public readonly void Serialize(NetDataWriter writer)
     {
         writer.Put(pid);
         writer.Put(username);
         writer.Put(ges);
+        writer.Put(mass);
+        writer.Put(initialJumpVelocity);
+        writer.Put(maxRunSpeed);
     }
 
     public void Deserialize(NetDataReader reader)
@@ -145,6 +136,9 @@ public struct PlayerState : INetSerializable
         pid = reader.GetUInt();
         username = reader.GetString();
         ges = reader.GetGES();
+        mass = reader.GetFloat();
+        initialJumpVelocity = reader.GetFloat();
+        maxRunSpeed = reader.GetFloat();
     }
 }
 }

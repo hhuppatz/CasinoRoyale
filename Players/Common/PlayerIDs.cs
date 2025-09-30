@@ -4,13 +4,13 @@ namespace CasinoRoyale.Players.Common
 {
     public class PlayerIDs
     {
-        private uint MAX_PLAYERS;
-        private Dictionary<uint, bool> ids;
+        private readonly uint MAX_PLAYERS;
+        private readonly Dictionary<uint, bool> ids;
 
         public PlayerIDs(uint MAX_PLAYERS)
         {
             this.MAX_PLAYERS = MAX_PLAYERS;
-            ids = new Dictionary<uint, bool>();
+            ids = [];
             for (uint ic = 0; ic < MAX_PLAYERS; ic++)
             {
                 ids.Add(ic, false);
@@ -19,7 +19,7 @@ namespace CasinoRoyale.Players.Common
 
         public bool RoomForNextPlayer()
         {
-            if (ids[MAX_PLAYERS])
+            if (ids[MAX_PLAYERS - 1])
             {
                 return false;
             }
