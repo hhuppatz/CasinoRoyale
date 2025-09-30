@@ -4,7 +4,7 @@ using CasinoRoyale.Utils;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 
-namespace CasinoRoyale.Extensions
+namespace CasinoRoyale.MonogameMethodExtensions
 {
     public static class DrawExtensions
     {

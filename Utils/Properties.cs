@@ -5,7 +5,9 @@ using System;
 using System.Linq;
 using System.Collections.Generic;
 
-public class Properties
+namespace CasinoRoyale.Utils
+{
+    public class Properties
 {
     private Dictionary<string, string> list;
     private string filename;
@@ -14,11 +16,12 @@ public class Properties
     {
         reload(file);
     }
-    
+        
     public string get(string field, string defValue)
     {
         return (get(field) == null) ? (defValue) : (get(field));
     }
+
     public string get(string field)
     {
         return (list.ContainsKey(field))?(list[field]):(null);
@@ -100,4 +103,5 @@ public class Properties
     }
 
 
+    }
 }

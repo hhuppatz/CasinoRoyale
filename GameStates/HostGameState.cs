@@ -6,10 +6,8 @@ using LiteNetLib.Utils;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using CasinoRoyale.GameObjects;
-using CasinoRoyale.Extensions;
-using CasinoRoyale.Players.Common;
-using CasinoRoyale.Players.Common.Networking;
-using CasinoRoyale.Players.Host;
+using CasinoRoyale.MonogameMethodExtensions;
+using CasinoRoyale.Networking;
 using CasinoRoyale.Utils;
 
 namespace CasinoRoyale.GameStates
@@ -31,7 +29,7 @@ namespace CasinoRoyale.GameStates
         private string currentLobbyCode;
         
         // Host-specific fields
-        private string username = "HAZZA";
+        private readonly string username = "HAZZA";
         
         public HostGameState(Game game) : base(game)
         {
@@ -99,9 +97,8 @@ namespace CasinoRoyale.GameStates
         {
             base.LoadContent();
             
-            // Load player texture (same as original Host)
-            string playerImageName = GetStringProperty("player.image", "ball");
-            Logger.Info($"Loading player texture: {playerImageName}");
+            // Load player texture using GameWorld
+            PlayerTexture = GameWorld.LoadPlayerTexture(Content);
             
             // Generate game world
             GenerateGameWorld();
@@ -114,7 +111,7 @@ namespace CasinoRoyale.GameStates
             Logger.Info($"Player {LocalPlayer.GetID()} {LocalPlayer.GetUsername()} created at {LocalPlayer.Coords}");
             
             // Initialize physics and camera
-            InitializePhysics();
+            GameWorld.InitPhysics();
             InitializeCamera();
         }
         
@@ -157,44 +154,8 @@ namespace CasinoRoyale.GameStates
             
             SpriteBatch.Begin();
             
-            // Draw casino machines (only if they exist)
-            if (CasinoMachines != null)
-            {
-                foreach (var casinoMachine in CasinoMachines)
-                {
-                    if (casinoMachine?.GetTex() != null)
-                    {
-                        SpriteBatch.Draw(casinoMachine.GetTex(),
-                            MainCamera.TransformToView(casinoMachine.Coords),
-                            null, Color.White, 0.0f, Vector2.Zero, ratio, 0, 0);
-                    }
-                }
-            }
-            
-            // Draw platforms (only if they exist)
-            if (Platforms != null)
-            {
-                foreach (var platform in Platforms)
-                {
-                    if (platform?.GetTex() != null)
-                    {
-                        int platformLeft = (int)platform.GetLCoords().X;
-                        int platformTexWidth = platform.GetTex().Bounds.Width;
-                        int platformWidth = platform.GetWidth();
-                        int i = platformLeft;
-                        
-                        while (i < platformLeft + platformWidth)
-                        {
-                            SpriteBatch.Draw(platform.GetTex(),
-                                MainCamera.TransformToView(new Vector2(i + platformTexWidth / 2, platform.GetCoords().Y)),
-                                null, Color.White, 0.0f,
-                                new Vector2(platformTexWidth / 2, platformTexWidth / 2),
-                                ratio, 0, 0);
-                            i += platformTexWidth;
-                        }
-                    }
-                }
-            }
+            // Draw objects in game world
+            GameWorld.DrawGameObjects(SpriteBatch, MainCamera, ratio);
             
             // Draw local player
             if (LocalPlayer != null)
@@ -246,51 +207,16 @@ namespace CasinoRoyale.GameStates
         
         private void GenerateGameWorld()
         {
-            // Load game area properties (same as original Host)
-            int gameAreaX = GetIntProperty("gameArea.x", -2000);
-            int gameAreaY = GetIntProperty("gameArea.y", 0);
-            int gameAreaWidth = GetIntProperty("gameArea.width", 4000);
-            int gameAreaHeight = GetIntProperty("gameArea.height", 4000);
+            // Load game area properties using GameWorld
+            GameWorld.LoadGameArea();
             
-            GameArea = new Rectangle(gameAreaX, gameAreaY, gameAreaWidth, gameAreaHeight);
+            // Calculate player spawn buffer using GameWorld
+            PlayerOrigin = GameWorld.CalculatePlayerOrigin(PlayerTexture.Height);
             
-            // Calculate player spawn buffer (same as original Host)
-            int playerSpawnBuffer = PlayerTexture.Height * 2; // Keep area directly around player free
-            PlayerOrigin = new Vector2(0, GameArea.Y + GameArea.Height - playerSpawnBuffer);
+            Logger.Debug($"Player spawn: gameArea={GameWorld.GameArea}, playerSpawnBuffer={PlayerTexture.Height * 2}, playerOrigin={PlayerOrigin}");
             
-            Logger.Debug($"Player spawn: gameArea={GameArea}, playerSpawnBuffer={playerSpawnBuffer}, playerOrigin={PlayerOrigin}");
-            
-            // Generate platforms (same parameters as original Host)
-            Platforms = PlatformLayout.GenerateStandardRandPlatLayout(
-                Content.Load<Texture2D>(GetStringProperty("casinoFloor.image.1", "CasinoFloor1")),
-                GameArea,
-                50,    // minPlatforms
-                200,   // maxPlatforms
-                50,    // minPlatformWidth
-                100,   // maxPlatformWidth
-                70,    // minPlatformHeight
-                playerSpawnBuffer);
-            
-            // Debug: Print platform hitboxes (first 3 only)
-            var platformTexture = Content.Load<Texture2D>(GetStringProperty("casinoFloor.image.1", "CasinoFloor1"));
-            Logger.Info($"Platform texture dimensions: {platformTexture.Width}x{platformTexture.Height}");
-            Logger.Info($"Generated {Platforms.Count} platforms");
-            for (int i = 0; i < Math.Min(3, Platforms.Count); i++)
-            {
-                var platform = Platforms[i];
-                Logger.Debug($"Platform {i}: Hitbox={platform.Hitbox}, Coords={platform.GetCoords()}");
-            }
-            
-            // Generate casino machines (same as original Host)
-            CasinoMachines = CasinoMachineFactory.SpawnCasinoMachines();
-            
-            // Debug: Log casino machine positions (first 3 only)
-            Logger.Info($"Spawned {CasinoMachines.Count} casino machines");
-            for (int i = 0; i < Math.Min(3, CasinoMachines.Count); i++)
-            {
-                var machine = CasinoMachines[i];
-                Logger.Debug($"Casino machine {i}: Coords={machine.Coords}, Hitbox={machine.Hitbox}");
-            }
+            // Generate game world using GameWorld
+            GameWorld.GenerateGameWorld(Content, PlayerOrigin);
         }
         
         private void CreateLocalPlayer()
@@ -342,11 +268,7 @@ namespace CasinoRoyale.GameStates
             }
             
             // Create casino machine states
-            var casinoMachineStates = new CasinoMachineState[CasinoMachines.Count];
-            for (int i = 0; i < CasinoMachines.Count; i++)
-            {
-                casinoMachineStates[i] = CasinoMachines[i].GetState();
-            }
+            var casinoMachineStates = GameWorld.WorldObjects.GetCasinoMachineStates();
             
             // Send to all clients individually
             foreach (var entry in networkPlayers)
@@ -500,19 +422,11 @@ namespace CasinoRoyale.GameStates
         
         private void SendJoinAccept(PlayableCharacter newPlayer, NetPeer peer)
         {
-            // Create platform states using GetState() method
-            var platformStates = new PlatformState[Platforms.Count];
-            for (int i = 0; i < Platforms.Count; i++)
-            {
-                platformStates[i] = Platforms[i].GetState();
-            }
+            // Create platform states using GameWorldObjects
+            var platformStates = GameWorld.WorldObjects.GetPlatformStates();
             
-            // Create casino machine states using GetState() method
-            var casinoMachineStates = new CasinoMachineState[CasinoMachines.Count];
-            for (int i = 0; i < CasinoMachines.Count; i++)
-            {
-                casinoMachineStates[i] = CasinoMachines[i].GetState();
-            }
+            // Create casino machine states using GameWorldObjects
+            var casinoMachineStates = GameWorld.WorldObjects.GetCasinoMachineStates();
             
             // Create player state using GetPlayerState() method
             var playerState = newPlayer.GetPlayerState();
@@ -520,11 +434,11 @@ namespace CasinoRoyale.GameStates
             // Send join acceptance packet
             var joinAcceptPacket = new JoinAcceptPacket
             {
-                gameArea = GameArea,
+                gameArea = GameWorld.GameArea,
                 playerHitbox = newPlayer.Hitbox,
                 playerState = playerState,
                 playerVelocity = newPlayer.Velocity,
-                otherPlayerStates = new PlayerState[0], // TODO: Add other players
+                otherPlayerStates = [], // TODO: Add other players
                 platformStates = platformStates,
                 casinoMachineStates = casinoMachineStates
             };
@@ -588,18 +502,13 @@ namespace CasinoRoyale.GameStates
             // Use a larger offset to avoid collision with casino machines and other objects
             Vector2 clientSpawnPosition = PlayerOrigin + new Vector2(nextSpawnOffset * 200, 0); // 200 pixels apart horizontally
             
-            // Check for collisions with casino machines and adjust if necessary
-            Rectangle clientHitbox = new Rectangle(clientSpawnPosition.ToPoint(), new Point(PlayerTexture.Bounds.Width, PlayerTexture.Bounds.Height));
-            bool hasCollision = false;
+            // Check for collisions with casino machines using GameWorld
+            Rectangle clientHitbox = new(clientSpawnPosition.ToPoint(), new Point(PlayerTexture.Bounds.Width, PlayerTexture.Bounds.Height));
+            bool hasCollision = GameWorld.WorldObjects.CheckCasinoMachineCollision(clientHitbox);
             
-            foreach (CasinoMachine machine in CasinoMachines)
+            if (hasCollision)
             {
-                if (clientHitbox.Intersects(machine.Hitbox))
-                {
-                    hasCollision = true;
-                    Logger.LogCollision(0, "spawn collision", $"with casino machine at {machine.Coords}, adjusting spawn position");
-                    break;
-                }
+                Logger.LogCollision(0, "spawn collision", "with casino machine, adjusting spawn position");
             }
             
             // If collision detected, move spawn position further right
@@ -618,27 +527,27 @@ namespace CasinoRoyale.GameStates
         
         private void DrawLobbyCode()
         {
-            // Draw lobby code in top-left corner with large, clear text
-            var lobbyText = $"LOBBY CODE: {currentLobbyCode}";
-            var scale = 2.0f; // Make it bigger!
+            // Draw lobby code in top-left corner with smaller, compact text
+            var lobbyText = $"LOBBY: {currentLobbyCode}";
+            var scale = 0.7f; // Smaller scale for corner display
             
             // Create background rectangle
             var textSize = Font.MeasureString(lobbyText) * scale;
-            var backgroundRect = new Rectangle(10, 10, (int)textSize.X + 40, (int)textSize.Y + 20);
+            var backgroundRect = new Rectangle(10, 10, (int)textSize.X + 20, (int)textSize.Y + 10);
             
             // Draw semi-transparent background
             var backgroundTexture = new Texture2D(GraphicsDevice, 1, 1);
-            backgroundTexture.SetData(new[] { Color.Black });
+            backgroundTexture.SetData([Color.Black]);
             SpriteBatch.Draw(backgroundTexture, backgroundRect, Color.Black * 0.8f);
             
             // Draw border
-            var borderRect = new Rectangle(backgroundRect.X - 2, backgroundRect.Y - 2, backgroundRect.Width + 4, backgroundRect.Height + 4);
+            var borderRect = new Rectangle(backgroundRect.X - 1, backgroundRect.Y - 1, backgroundRect.Width + 2, backgroundRect.Height + 2);
             var borderTexture = new Texture2D(GraphicsDevice, 1, 1);
-            borderTexture.SetData(new[] { Color.White });
+            borderTexture.SetData([Color.White]);
             SpriteBatch.Draw(borderTexture, borderRect, Color.White);
             
-            // Draw lobby code text using proper font - LARGE and CLEAR
-            var textPosition = new Vector2(backgroundRect.X + 20, backgroundRect.Y + 10);
+            // Draw lobby code text - smaller and compact
+            var textPosition = new Vector2(backgroundRect.X + 10, backgroundRect.Y + 5);
             SpriteBatch.DrawString(Font, lobbyText, textPosition, Color.Yellow, 0f, Vector2.Zero, scale, Microsoft.Xna.Framework.Graphics.SpriteEffects.None, 0f);
             
             // Clean up textures

@@ -2,7 +2,7 @@ using System;
 using LiteNetLib.Utils;
 using Microsoft.Xna.Framework;
 using CasinoRoyale.GameObjects.Interfaces;
-using CasinoRoyale.Players.Common.Networking;
+using CasinoRoyale.Networking;
 
 namespace CasinoRoyale.GameObjects
 {

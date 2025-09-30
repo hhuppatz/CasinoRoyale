@@ -2,7 +2,7 @@ using System.Net;
 using LiteNetLib;
 using LiteNetLib.Utils;
 
-namespace CasinoRoyale.Players.Common.Networking
+namespace CasinoRoyale.Networking
 {
     /// <summary>
     /// Common interface for both direct NetPeer connections and relay connections

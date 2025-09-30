@@ -5,7 +5,7 @@ using LiteNetLib;
 using LiteNetLib.Utils;
 using CasinoRoyale.Utils;
 
-namespace CasinoRoyale.Players.Common.Networking
+namespace CasinoRoyale.Networking
 {
     /// <summary>
     /// Simplified relay manager using pure LiteNetLib

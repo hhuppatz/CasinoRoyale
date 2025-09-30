@@ -1,7 +1,7 @@
 using LiteNetLib;
 using CasinoRoyale.GameObjects;
 
-namespace CasinoRoyale.Players.Host
+namespace CasinoRoyale.Networking
 {
     // Wrapper for PlayableCharacter class with NetPeer information
     public class NetworkPlayer

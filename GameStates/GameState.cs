@@ -1,11 +1,10 @@
-using System;
 using System.Collections.Generic;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using Microsoft.Xna.Framework.Content;
 using CasinoRoyale.GameObjects;
-using CasinoRoyale.Extensions;
+using CasinoRoyale.MonogameMethodExtensions;
 using CasinoRoyale.Utils;
 
 namespace CasinoRoyale.GameStates
@@ -27,21 +26,23 @@ namespace CasinoRoyale.GameStates
         protected Properties GameProperties { get; private set; }
         
         // Game world
-        protected Rectangle GameArea { get; set; }
-        protected List<Platform> Platforms { get; set; } = new();
-        protected List<CasinoMachine> CasinoMachines { get; set; } = new();
-        protected CasinoMachineFactory CasinoMachineFactory { get; set; }
+        protected GameWorld GameWorld { get; private set; }
         
         // Player
         protected PlayableCharacter LocalPlayer { get; set; }
-        protected Texture2D PlayerTexture { get; private set; }
+        protected Texture2D PlayerTexture { get; set; }
         protected Vector2 PlayerOrigin { get; set; }
-        
+
+        // Keyboard States
+        protected KeyboardState KeyboardState { get; set; }
+        protected KeyboardState PreviousKeyboardState { get; set; }
+
         protected GameState(Game game)
         {
             Game = game;
             MainCamera = MainCamera.Instance;
             GameProperties = new Properties("app.properties");
+            GameWorld = new GameWorld(GameProperties);
         }
         
         public virtual void Initialize()
@@ -56,23 +57,21 @@ namespace CasinoRoyale.GameStates
             
             // Load common textures
             PlayerTexture = Content.Load<Texture2D>("ball");
-            var platformTexture = Content.Load<Texture2D>("CasinoFloor1");
-            var casinoMachineTexture = Content.Load<Texture2D>("CasinoMachine1");
             
             // Calculate player origin
             PlayerOrigin = CalculatePlayerOrigin();
-            
-            // Initialize casino machine factory
-            CasinoMachineFactory = new CasinoMachineFactory(casinoMachineTexture);
         }
         
         public virtual void Update(GameTime gameTime)
         {
+            PreviousKeyboardState = KeyboardState;
+            KeyboardState = Keyboard.GetState();
+            
             // Common update logic
             if (LocalPlayer != null)
             {
                 float deltaTime = (float)gameTime.ElapsedGameTime.TotalSeconds;
-                LocalPlayer.TryMovePlayer(Keyboard.GetState(), deltaTime);
+                LocalPlayer.TryMovePlayer(KeyboardState, PreviousKeyboardState, deltaTime);
                 MainCamera.MoveToFollowPlayer(LocalPlayer);
             }
         }
@@ -99,44 +98,7 @@ namespace CasinoRoyale.GameStates
             
             SpriteBatch.Begin();
             
-            // Draw casino machines (only if they exist)
-            if (CasinoMachines != null)
-            {
-                foreach (var casinoMachine in CasinoMachines)
-                {
-                    if (casinoMachine?.GetTex() != null)
-                    {
-                        SpriteBatch.Draw(casinoMachine.GetTex(),
-                            MainCamera.TransformToView(casinoMachine.Coords),
-                            null, Color.White, 0.0f, Vector2.Zero, ratio, 0, 0);
-                    }
-                }
-            }
-            
-            // Draw platforms (only if they exist)
-            if (Platforms != null)
-            {
-                foreach (var platform in Platforms)
-                {
-                    if (platform?.GetTex() != null)
-                    {
-                        int platformLeft = (int)platform.GetLCoords().X;
-                        int platformTexWidth = platform.GetTex().Bounds.Width;
-                        int platformWidth = platform.GetWidth();
-                        int i = platformLeft;
-                        
-                        while (i < platformLeft + platformWidth)
-                        {
-                            SpriteBatch.Draw(platform.GetTex(),
-                                MainCamera.TransformToView(new Vector2(i + platformTexWidth / 2, platform.GetCoords().Y)),
-                                null, Color.White, 0.0f,
-                                new Vector2(platformTexWidth / 2, platformTexWidth / 2),
-                                ratio, 0, 0);
-                            i += platformTexWidth;
-                        }
-                    }
-                }
-            }
+            GameWorld.DrawGameObjects(SpriteBatch, MainCamera, ratio);
             
             // Draw local player
             if (LocalPlayer != null)
@@ -156,12 +118,7 @@ namespace CasinoRoyale.GameStates
         {
             // Calculate player spawn position
             int playerSpawnBuffer = GetIntProperty("playerSpawnBuffer", 128);
-            return new Vector2(0, GameArea.Height - playerSpawnBuffer);
-        }
-        
-        protected virtual void InitializePhysics()
-        {
-            PhysicsSystem.Initialize(GameArea, Platforms, CasinoMachines, GameProperties);
+            return new Vector2(0, GameWorld.GameArea.Height - playerSpawnBuffer);
         }
         
         protected virtual void InitializeCamera()

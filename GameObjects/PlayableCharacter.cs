@@ -5,7 +5,7 @@ using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using CasinoRoyale.GameObjects.Interfaces;
-using CasinoRoyale.Players.Common.Networking;
+using CasinoRoyale.Networking;
 
 namespace CasinoRoyale.GameObjects
 {
@@ -26,7 +26,8 @@ namespace CasinoRoyale.GameObjects
     private bool inJump = false;
     public bool InJump { get => inJump; set => inJump = value; }
 
-    public void TryMovePlayer(KeyboardState ks, float dt)
+    // Include previous keyboard state to check for key releases
+    public void TryMovePlayer(KeyboardState ks, KeyboardState previousKs, float dt)
     {
         bool m_playerAttemptedJump = false;
         

@@ -3,7 +3,7 @@ using LiteNetLib.Utils;
 using Microsoft.Xna.Framework;
 using CasinoRoyale.GameObjects;
 
-namespace CasinoRoyale.Players.Common.Networking
+namespace CasinoRoyale.Networking
 {
     public class JoinPacket : INetSerializable
     {
