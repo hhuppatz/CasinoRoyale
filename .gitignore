@@ -1,5 +1,6 @@
 # Build outputs
 Build/
+Scripts/
 
 # Visual Studio / MonoGame
 .vs/
