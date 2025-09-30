@@ -37,7 +37,13 @@ namespace CasinoRoyale.Players.Common.Networking
             _relayServerPort = relayServerPort;
             
             // Create NetManager that wraps the game's event listener
-            _netManager = new NetManager(new RelayEventListener(this, gameEventListener));
+            _netManager = new NetManager(new RelayEventListener(this, gameEventListener))
+            {
+                DisconnectTimeout = 10000, // 10 seconds timeout
+                ReconnectDelay = 1000,
+                MaxConnectAttempts = 5,
+                PingInterval = 2000 // Send ping every 2 seconds
+            };
             _netManager.Start();
             
             Logger.LogNetwork("RELAY_MGR", $"LiteNetRelayManager initialized, target: {_relayServerAddress}:{_relayServerPort}");
@@ -52,12 +58,22 @@ namespace CasinoRoyale.Players.Common.Networking
                 // Connect to relay server
                 _relayServerPeer = _netManager.Connect(_relayServerAddress, _relayServerPort, "");
                 
-                // Wait for connection
-                await Task.Delay(500); // Give it time to connect
+                // Wait for connection with retries
+                for (int i = 0; i < 20; i++) // Try for up to 2 seconds
+                {
+                    await Task.Delay(100);
+                    _netManager.PollEvents(); // Process connection events
+                    
+                    if (_relayServerPeer != null && _relayServerPeer.ConnectionState == ConnectionState.Connected)
+                    {
+                        Logger.LogNetwork("RELAY_MGR", "Connected to relay server successfully");
+                        break;
+                    }
+                }
                 
                 if (_relayServerPeer == null || _relayServerPeer.ConnectionState != ConnectionState.Connected)
                 {
-                    Logger.Error("Failed to connect to relay server");
+                    Logger.Error($"Failed to connect to relay server after 2 seconds. State: {_relayServerPeer?.ConnectionState}");
                     return false;
                 }
                 
@@ -87,12 +103,22 @@ namespace CasinoRoyale.Players.Common.Networking
                 // Connect to relay server
                 _relayServerPeer = _netManager.Connect(_relayServerAddress, _relayServerPort, "");
                 
-                // Wait for connection
-                await Task.Delay(500);
+                // Wait for connection with retries
+                for (int i = 0; i < 20; i++) // Try for up to 2 seconds
+                {
+                    await Task.Delay(100);
+                    _netManager.PollEvents(); // Process connection events
+                    
+                    if (_relayServerPeer != null && _relayServerPeer.ConnectionState == ConnectionState.Connected)
+                    {
+                        Logger.LogNetwork("RELAY_MGR", "Connected to relay server successfully");
+                        break;
+                    }
+                }
                 
                 if (_relayServerPeer == null || _relayServerPeer.ConnectionState != ConnectionState.Connected)
                 {
-                    Logger.Error("Failed to connect to relay server");
+                    Logger.Error($"Failed to connect to relay server after 2 seconds. State: {_relayServerPeer?.ConnectionState}");
                     return false;
                 }
                 

@@ -19,6 +19,11 @@
     <None Remove="Icon.bmp" />
   </ItemGroup>
   <ItemGroup>
+    <None Update="app.properties">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
     <EmbeddedResource Include="Icon.ico">
       <LogicalName>Icon.ico</LogicalName>
     </EmbeddedResource>

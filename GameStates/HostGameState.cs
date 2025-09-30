@@ -43,7 +43,10 @@ namespace CasinoRoyale.GameStates
             base.Initialize();
             
             // Initialize relay manager (using LiteNetLib relay)
-            relayManager = new LiteNetRelayManager(this);
+            string relayAddress = GetStringProperty("relay.server.address", "127.0.0.1");
+            int relayPort = GetIntProperty("relay.server.port", 9051);
+            Logger.Info($"Initializing relay manager with server: {relayAddress}:{relayPort}");
+            relayManager = new LiteNetRelayManager(this, relayAddress, relayPort);
             writer = new NetDataWriter();
             packetProcessor = new NetPacketProcessor();
             
