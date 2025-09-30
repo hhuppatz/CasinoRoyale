@@ -83,7 +83,7 @@ public class JoinAcceptPacket : INetSerializable {
         for (int i = 0; i < casinoMachineCount; i++)
             casinoMachineStates[i] = reader.Get<CasinoMachineState>();
     }
-}
+}   
 
 public class PlayerSendUpdatePacket : INetSerializable {
     public Vector2 coords { get; set; }

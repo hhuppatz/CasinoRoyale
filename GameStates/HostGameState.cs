@@ -23,6 +23,7 @@ namespace CasinoRoyale.GameStates
         private NetPacketProcessor packetProcessor;
         private Dictionary<uint, NetworkPlayer> networkPlayers = new();
         private float serverUpdateTimer = 0f;
+        private float gameTime = 0f; // Track game time for state buffering
         private readonly uint MAX_PLAYERS = 6;
         private PlayerIDs playerIDs;
         private int nextSpawnOffset = 0;
@@ -121,9 +122,17 @@ namespace CasinoRoyale.GameStates
             
             float deltaTime = (float)gameTime.ElapsedGameTime.TotalSeconds;
             serverUpdateTimer += deltaTime;
+            this.gameTime += deltaTime; // Track total game time
             
             // Check for client packets through relay
             relayManager.PollEvents();
+            
+            // Process buffered states and update interpolation for network players
+            foreach (var entry in networkPlayers.Values)
+            {
+                entry.Player.ProcessBufferedStates(deltaTime);
+                entry.Player.UpdateInterpolation(deltaTime);
+            }
             
             // Check for player collisions
             CheckPlayerCollisions();
@@ -233,6 +242,9 @@ namespace CasinoRoyale.GameStates
                 new Rectangle(PlayerOrigin.ToPoint(), new Point(PlayerTexture.Bounds.Width, PlayerTexture.Bounds.Height)),
                 true);
             
+            // Initialize interpolation targets
+            LocalPlayer.InitializeTargets();
+            
             Logger.Info($"Player {LocalPlayer.GetID()} {LocalPlayer.GetUsername()} created at {LocalPlayer.Coords}");
         }
         
@@ -292,16 +304,16 @@ namespace CasinoRoyale.GameStates
                 {
                     if (entry.Player != LocalPlayer)
                     {
-                        entry.Player.Coords = packet.coords;
-                        entry.Player.Velocity = packet.velocity;
+                        // Add state to buffer for delayed application
+                        entry.Player.AddBufferedState(packet.coords, packet.velocity, gameTime);
                         break;
                     }
                 }
             }
             else if (networkPlayers.TryGetValue((uint)peer.Id, out NetworkPlayer networkPlayer))
             {
-                networkPlayer.Player.Coords = packet.coords;
-                networkPlayer.Player.Velocity = packet.velocity;
+                // Add state to buffer for delayed application
+                networkPlayer.Player.AddBufferedState(packet.coords, packet.velocity, gameTime);
             }
         }
         
@@ -349,6 +361,9 @@ namespace CasinoRoyale.GameStates
                 joinPacket.playerMaxRunSpeed,
                 new Rectangle(spawnPosition.ToPoint(), new Point(PlayerTexture.Bounds.Width, PlayerTexture.Bounds.Height)),
                 false);
+            
+            // Initialize interpolation targets
+            newPlayer.InitializeTargets();
             
             // For relay connections, peer will be null
             if (peer == null)

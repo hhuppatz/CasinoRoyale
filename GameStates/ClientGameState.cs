@@ -24,6 +24,7 @@ namespace CasinoRoyale.GameStates
         private NetPeer server;
         private bool connected = false;
         private readonly string lobbyCode = lobbyCode;
+        private float gameTime = 0f; // Track game time for state buffering
         
         // Client-specific fields
         private readonly string username = "HH";
@@ -97,11 +98,19 @@ namespace CasinoRoyale.GameStates
             base.Update(gameTime);
             
             float deltaTime = (float)gameTime.ElapsedGameTime.TotalSeconds;
+            this.gameTime += deltaTime; // Track total game time
             
             // Always poll events, even when not connected (to receive JOINED_LOBBY, etc.)
             relayManager.PollEvents();
             
             if (!connected || LocalPlayer == null) return;
+            
+            // Process buffered states and update interpolation for other players
+            foreach (var otherPlayer in otherPlayers)
+            {
+                otherPlayer.ProcessBufferedStates(deltaTime);
+                otherPlayer.UpdateInterpolation(deltaTime);
+            }
             
             // Check for player collisions (same as Host)
             CheckPlayerCollisions();
@@ -205,13 +214,16 @@ namespace CasinoRoyale.GameStates
                         new Rectangle(playerState.ges.coords.ToPoint(), new Point(PlayerTexture.Bounds.Width, PlayerTexture.Bounds.Height)),
                         false);
                     
+                    // Initialize interpolation targets
+                    otherPlayer.InitializeTargets();
+                    
                     otherPlayers.Add(otherPlayer);
                     Logger.LogNetwork("CLIENT", $"Added player {otherPlayer.GetID()} ({otherPlayer.GetUsername()})");
                 }
                 else
                 {
-                    // Update existing player
-                    otherPlayer.SetPlayerState(playerState);
+                    // Update existing player with buffered state for delayed interpolation
+                    otherPlayer.AddBufferedState(playerState.ges.coords, playerState.ges.velocity, gameTime);
                 }
             }
             
@@ -398,6 +410,9 @@ namespace CasinoRoyale.GameStates
                 GetFloatProperty("playerRunSpeed", 240f),
                 new Rectangle(PlayerOrigin.ToPoint(), new Point(PlayerTexture.Bounds.Width, PlayerTexture.Bounds.Height)),
                 true);
+            
+            // Initialize interpolation targets
+            LocalPlayer.InitializeTargets();
             
             Logger.Info($"Player {LocalPlayer.GetID()} {LocalPlayer.GetUsername()} created at {LocalPlayer.Coords}");
         }

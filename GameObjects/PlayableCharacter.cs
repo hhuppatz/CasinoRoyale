@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using LiteNetLib.Utils;
 using Microsoft.Xna.Framework;
@@ -25,6 +26,22 @@ namespace CasinoRoyale.GameObjects
 
     private bool inJump = false;
     public bool InJump { get => inJump; set => inJump = value; }
+
+    // Simple movement interpolation fields
+    private Vector2 targetCoords;
+    private Vector2 targetVelocity;
+    private float interpolationSpeed = 8.0f; // How fast to interpolate to target position
+    
+    // State buffer for delayed interpolation
+    private struct BufferedState
+    {
+        public Vector2 coords;
+        public Vector2 velocity;
+        public float timestamp;
+    }
+    
+    private readonly Queue<BufferedState> stateBuffer = new();
+    private float currentTime = 0f;
 
     // Include previous keyboard state to check for key releases
     public void TryMovePlayer(KeyboardState ks, KeyboardState previousKs, float dt)
@@ -82,6 +99,79 @@ namespace CasinoRoyale.GameObjects
             AwakenEntity();
         else
             SleepEntity();
+    }
+
+    // Set target position for interpolation (used for network updates)
+    public void SetTargetPosition(Vector2 newCoords, Vector2 newVelocity)
+    {
+        targetCoords = newCoords;
+        targetVelocity = newVelocity;
+    }
+    
+    // Add state to buffer for delayed application
+    public void AddBufferedState(Vector2 newCoords, Vector2 newVelocity, float timestamp)
+    {
+        var bufferedState = new BufferedState
+        {
+            coords = newCoords,
+            velocity = newVelocity,
+            timestamp = timestamp
+        };
+        
+        stateBuffer.Enqueue(bufferedState);
+        
+        // Keep buffer size reasonable (max 5 states)
+        while (stateBuffer.Count > 5)
+        {
+            stateBuffer.Dequeue();
+        }
+        
+        // Apply immediately for responsiveness, but also keep in buffer for smoothing
+        SetTargetPosition(newCoords, newVelocity);
+    }
+    
+    // Process buffered states and apply delayed ones
+    public void ProcessBufferedStates(float dt)
+    {
+        currentTime += dt;
+        
+        // Clean up old states from buffer
+        while (stateBuffer.Count > 0)
+        {
+            var oldestState = stateBuffer.Peek();
+            
+            // Remove states older than 200ms
+            if (currentTime - oldestState.timestamp > 0.2f)
+            {
+                stateBuffer.Dequeue();
+            }
+            else
+            {
+                break;
+            }
+        }
+    }
+    
+    // Initialize target coordinates (call this after player creation)
+    public void InitializeTargets()
+    {
+        targetCoords = Coords;
+        targetVelocity = Velocity;
+        currentTime = 0f;
+    }
+
+    // Update position using interpolation towards target
+    public void UpdateInterpolation(float dt)
+    {
+        // Only interpolate if we have a target set
+        if (targetCoords != Vector2.Zero || Vector2.Distance(Coords, targetCoords) > 0.1f)
+        {
+            // Smooth interpolation towards target position
+            Coords = Vector2.Lerp(Coords, targetCoords, interpolationSpeed * dt);
+            
+            // Smooth interpolation towards target velocity
+            Velocity = Vector2.Lerp(Velocity, targetVelocity, interpolationSpeed * dt);
+        }
     }
 
     // getters
