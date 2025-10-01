@@ -41,18 +41,19 @@ namespace CasinoRoyale.GameObjects
         /// </summary>
         private void GeneratePlatforms(ContentManager content, Rectangle gameArea, Vector2 playerOrigin)
         {
-            // Calculate player spawn buffer
-            int playerSpawnBuffer = (int)(playerOrigin.Y - gameArea.Y);
+            // Calculate player spawn buffer - this should be the height of the bottom safe zone
+            // where we don't want to spawn platforms (to keep area around player clear)
+            int playerSpawnBuffer = 200; // Fixed value for bottom buffer zone
             
             // Generate platforms using PlatformLayout
             Platforms = PlatformLayout.GenerateStandardRandPlatLayout(
                 content.Load<Texture2D>(gameProperties.get("casinoFloor.image.1", "CasinoFloor1")),
                 gameArea,
-                50,    // minPlatforms
-                200,   // maxPlatforms
-                50,    // minPlatformWidth
-                100,   // maxPlatformWidth
-                70,    // minPlatformHeight
+                50,    // minLen (minimum platform width)
+                200,   // maxLen (maximum platform width)
+                50,    // horizontalDistApart
+                100,   // verticalDistApart
+                70,    // platSpawnChance (70% chance to spawn)
                 playerSpawnBuffer);
             
             // Debug: Print platform hitboxes (first 3 only)

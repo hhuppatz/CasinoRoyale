@@ -7,8 +7,6 @@
     <TieredCompilation>false</TieredCompilation>
     <AssemblyName>CasinoRoyaleServer</AssemblyName>
     <RootNamespace>CasinoRoyale</RootNamespace>
-    <BaseOutputPath>Build\bin\</BaseOutputPath>
-    <BaseIntermediateOutputPath>Build\obj\</BaseIntermediateOutputPath>
   </PropertyGroup>
   <PropertyGroup>
     <ApplicationManifest>app.manifest</ApplicationManifest>

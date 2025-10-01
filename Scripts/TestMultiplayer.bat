@@ -6,7 +6,7 @@ echo ========================================
 echo.
 echo This will start two local game instances.
 echo They will connect to the remote relay server at:
-echo   54.252.174.8:9051
+echo   3.107.27.32
 echo.
 echo Press any key to continue...
 pause > nul
