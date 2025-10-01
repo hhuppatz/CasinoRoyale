@@ -14,8 +14,14 @@ namespace CasinoRoyale.GameStates
     /// <summary>
     /// Game state for joining a game as a client
     /// </summary>
-    public class ClientGameState(Game game, string lobbyCode) : GameState(game), INetEventListener
+    public class ClientGameState(Game game, IGameStateManager stateManager, string lobbyCode) : GameState(game, stateManager), INetEventListener
     {
+        // Game world and player
+        protected GameWorld GameWorld { get; private set; }
+        protected PlayableCharacter LocalPlayer { get; set; }
+        protected Texture2D PlayerTexture { get; set; }
+        protected Vector2 PlayerOrigin { get; set; }
+
         // Network fields
         private LiteNetRelayManager relayManager;
         private NetDataWriter writer;
@@ -33,6 +39,9 @@ namespace CasinoRoyale.GameStates
         public override void Initialize()
         {
             base.Initialize();
+            
+            // Initialize GameWorld
+            GameWorld = new GameWorld(GameProperties);
             
             // Initialize relay manager (using LiteNetLib relay)
             string relayAddress = GetStringProperty("relay.server.address", "127.0.0.1");
@@ -73,24 +82,49 @@ namespace CasinoRoyale.GameStates
         
         public override void LoadContent()
         {
-            base.LoadContent();
-            
-            // Load player texture using GameWorld
-            PlayerTexture = GameWorld.LoadPlayerTexture(Content);
-            
-            // Generate game world (same as Host - client will receive updates from host)
-            GenerateGameWorld();
-            
-            // Create local player (same as Host)
-            CreateLocalPlayer();
-            
-            // Debug: Print player hitbox info (same as Host)
-            Logger.Info($"Player texture dimensions: {PlayerTexture.Width}x{PlayerTexture.Height}");
-            Logger.Info($"Player {LocalPlayer.GetID()} {LocalPlayer.GetUsername()} created at {LocalPlayer.Coords}");
-            
-            // Initialize physics and camera (same as Host)
-            GameWorld.InitPhysics();
-            InitializeCamera();
+            try
+            {
+                Logger.Info("ClientGameState.LoadContent() starting...");
+                
+                base.LoadContent();
+                Logger.Info("Base LoadContent() completed");
+                
+                // Load player texture using GameWorld
+                if (GameWorld == null)
+                {
+                    Logger.Error("GameWorld is null in LoadContent()!");
+                    return;
+                }
+                
+                PlayerTexture = GameWorld.LoadPlayerTexture(Content);
+                Logger.Info("Player texture loaded");
+                
+                // Generate game world (same as Host - client will receive updates from host)
+                GenerateGameWorld();
+                Logger.Info("Game world generated");
+                
+                // Create local player (same as Host)
+                CreateLocalPlayer();
+                Logger.Info("Local player created");
+                
+                // Debug: Print player hitbox info (same as Host)
+                Logger.Info($"Player texture dimensions: {PlayerTexture.Width}x{PlayerTexture.Height}");
+                Logger.Info($"Player {LocalPlayer.GetID()} {LocalPlayer.GetUsername()} created at {LocalPlayer.Coords}");
+                
+                // Initialize physics and camera (same as Host)
+                GameWorld.InitPhysics();
+                Logger.Info("Physics initialized");
+                
+                InitializeCamera();
+                Logger.Info("Camera initialized");
+                
+                Logger.Info("ClientGameState.LoadContent() completed successfully!");
+            }
+            catch (Exception ex)
+            {
+                Logger.Error($"Error in ClientGameState.LoadContent(): {ex.Message}");
+                Logger.Error($"Stack trace: {ex.StackTrace}");
+            }
         }
         
         public override void Update(GameTime gameTime)
@@ -104,6 +138,16 @@ namespace CasinoRoyale.GameStates
             relayManager.PollEvents();
             
             if (!connected || LocalPlayer == null) return;
+
+            // Common update logic
+            if (LocalPlayer != null)
+            {
+                LocalPlayer.TryMovePlayer(KeyboardState, PreviousKeyboardState, deltaTime);
+                MainCamera.MoveToFollowPlayer(LocalPlayer);
+            }
+            
+            // Don't process multiplayer logic if game isn't fully initialized
+            if (GameWorld == null || GameWorld.WorldObjects == null) return;
             
             // Process buffered states and update interpolation for other players
             foreach (var otherPlayer in otherPlayers)
@@ -136,12 +180,47 @@ namespace CasinoRoyale.GameStates
                 return;
             }
             
-            if (!connected || LocalPlayer == null) return;
+            if (GameWorld == null || GameWorld.WorldObjects == null)
+            {
+                Logger.Error("GameWorld is not initialized in ClientGameState.Draw() - skipping draw");
+                return;
+            }
             
-            base.Draw(gameTime);
+            if (!connected || LocalPlayer == null) 
+            {
+                // Client not yet connected, skip drawing game objects
+                return;
+            }
+            
+            Vector2 ratio = Resolution.ratio;
+            MainCamera.ApplyRatio(ratio);
+            
+            SpriteBatch.Begin();
+            
+            // Draw game world objects
+            GameWorld.DrawGameObjects(SpriteBatch, MainCamera, ratio);
+            
+            // Draw local player
+            if (LocalPlayer != null)
+            {
+                SpriteBatch.DrawEntity(MainCamera, LocalPlayer);
+            }
+            
+            // Draw other players
+            DrawOtherPlayers();
+            
+            SpriteBatch.End();
+        }
+
+        protected virtual void InitializeCamera()
+        {
+            if (LocalPlayer != null)
+            {
+                MainCamera.InitMainCamera(Window, LocalPlayer);
+            }
         }
         
-        protected override void DrawOtherPlayers()
+        protected void DrawOtherPlayers()
         {
             // Draw other players
             foreach (var player in otherPlayers)

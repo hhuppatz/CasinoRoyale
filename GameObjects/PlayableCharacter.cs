@@ -5,7 +5,6 @@ using LiteNetLib.Utils;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
-using CasinoRoyale.GameObjects.Interfaces;
 using CasinoRoyale.Networking;
 
 namespace CasinoRoyale.GameObjects

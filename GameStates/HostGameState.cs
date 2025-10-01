@@ -17,6 +17,12 @@ namespace CasinoRoyale.GameStates
     /// </summary>
     public class HostGameState : GameState, INetEventListener
     {
+        // Game world and player
+        protected GameWorld GameWorld { get; private set; }
+        protected PlayableCharacter LocalPlayer { get; set; }
+        protected Texture2D PlayerTexture { get; set; }
+        protected Vector2 PlayerOrigin { get; set; }
+
         // Network fields
         private LiteNetRelayManager relayManager;
         private NetDataWriter writer;
@@ -32,7 +38,7 @@ namespace CasinoRoyale.GameStates
         // Host-specific fields
         private readonly string username = "HAZZA";
         
-        public HostGameState(Game game) : base(game)
+        public HostGameState(Game game, IGameStateManager stateManager) : base(game, stateManager)
         {
             playerIDs = new PlayerIDs(MAX_PLAYERS);
         }
@@ -40,6 +46,9 @@ namespace CasinoRoyale.GameStates
         public override void Initialize()
         {
             base.Initialize();
+            
+            // Initialize GameWorld
+            GameWorld = new GameWorld(GameProperties);
             
             // Initialize relay manager (using LiteNetLib relay)
             string relayAddress = GetStringProperty("relay.server.address", "127.0.0.1");
@@ -96,24 +105,49 @@ namespace CasinoRoyale.GameStates
         
         public override void LoadContent()
         {
-            base.LoadContent();
-            
-            // Load player texture using GameWorld
-            PlayerTexture = GameWorld.LoadPlayerTexture(Content);
-            
-            // Generate game world
-            GenerateGameWorld();
-            
-            // Create local player
-            CreateLocalPlayer();
-            
-            // Debug: Print player hitbox info (same as original Host)
-            Logger.Info($"Player texture dimensions: {PlayerTexture.Width}x{PlayerTexture.Height}");
-            Logger.Info($"Player {LocalPlayer.GetID()} {LocalPlayer.GetUsername()} created at {LocalPlayer.Coords}");
-            
-            // Initialize physics and camera
-            GameWorld.InitPhysics();
-            InitializeCamera();
+            try
+            {
+                Logger.Info("HostGameState.LoadContent() starting...");
+                
+                base.LoadContent();
+                Logger.Info("Base LoadContent() completed");
+                
+                // Load player texture using GameWorld
+                if (GameWorld == null)
+                {
+                    Logger.Error("GameWorld is null in LoadContent()!");
+                    return;
+                }
+                
+                PlayerTexture = GameWorld.LoadPlayerTexture(Content);
+                Logger.Info("Player texture loaded");
+                
+                // Generate game world
+                GenerateGameWorld();
+                Logger.Info("Game world generated");
+                
+                // Create local player
+                CreateLocalPlayer();
+                Logger.Info("Local player created");
+                
+                // Debug: Print player hitbox info (same as original Host)
+                Logger.Info($"Player texture dimensions: {PlayerTexture.Width}x{PlayerTexture.Height}");
+                Logger.Info($"Player {LocalPlayer.GetID()} {LocalPlayer.GetUsername()} created at {LocalPlayer.Coords}");
+                
+                // Initialize physics and camera
+                GameWorld.InitPhysics();
+                Logger.Info("Physics initialized");
+                
+                InitializeCamera();
+                Logger.Info("Camera initialized");
+                
+                Logger.Info("HostGameState.LoadContent() completed successfully!");
+            }
+            catch (Exception ex)
+            {
+                Logger.Error($"Error in HostGameState.LoadContent(): {ex.Message}");
+                Logger.Error($"Stack trace: {ex.StackTrace}");
+            }
         }
         
         public override void Update(GameTime gameTime)
@@ -126,6 +160,16 @@ namespace CasinoRoyale.GameStates
             
             // Check for client packets through relay
             relayManager.PollEvents();
+
+            // Common update logic
+            if (LocalPlayer != null)
+            {
+                LocalPlayer.TryMovePlayer(KeyboardState, PreviousKeyboardState, deltaTime);
+                MainCamera.MoveToFollowPlayer(LocalPlayer);
+            }
+            
+            // Don't process multiplayer logic if game isn't fully initialized
+            if (LocalPlayer == null || GameWorld == null || GameWorld.WorldObjects == null) return;
             
             // Process buffered states and update interpolation for network players
             foreach (var entry in networkPlayers.Values)
@@ -158,6 +202,12 @@ namespace CasinoRoyale.GameStates
                 return;
             }
             
+            if (GameWorld == null || GameWorld.WorldObjects == null)
+            {
+                Logger.Error("GameWorld is not initialized in HostGameState.Draw() - skipping draw");
+                return;
+            }
+            
             Vector2 ratio = Resolution.ratio;
             MainCamera.ApplyRatio(ratio);
             
@@ -176,15 +226,23 @@ namespace CasinoRoyale.GameStates
             DrawOtherPlayers();
             
             // Draw lobby code in top-left corner (same as original Host)
-            if (!string.IsNullOrEmpty(currentLobbyCode))
+            if (!string.IsNullOrEmpty(currentLobbyCode) && Font != null)
             {
                 DrawLobbyCode();
             }
             
             SpriteBatch.End();
         }
+
+        protected virtual void InitializeCamera()
+        {
+            if (LocalPlayer != null)
+            {
+                MainCamera.InitMainCamera(Window, LocalPlayer);
+            }
+        }
         
-        protected override void DrawOtherPlayers()
+        protected void DrawOtherPlayers()
         {
             // Draw network players
             foreach (var entry in networkPlayers)
@@ -255,7 +313,7 @@ namespace CasinoRoyale.GameStates
             foreach (var entry in networkPlayers)
             {
                 var otherPlayer = entry.Value.Player;
-                if (otherPlayer.Hitbox.Intersects(LocalPlayer.Hitbox))
+                if (otherPlayer != null && otherPlayer.Hitbox.Intersects(LocalPlayer.Hitbox))
                 {
                     Logger.LogCollision(LocalPlayer.GetID(), "player collision", $"with player {otherPlayer.GetID()}");
                 }
@@ -266,6 +324,9 @@ namespace CasinoRoyale.GameStates
         {
             if (serverUpdateTimer < 1.0f / 60.0f) return; // 60 FPS updates
             serverUpdateTimer = 0f;
+            
+            // Don't send updates if game isn't fully initialized
+            if (LocalPlayer == null || GameWorld == null || GameWorld.WorldObjects == null) return;
             
             // Create player states array using GetPlayerState() method
             PlayerState[] playerStates = new PlayerState[networkPlayers.Count + 1];

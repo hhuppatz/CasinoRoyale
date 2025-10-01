@@ -21,7 +21,7 @@ namespace CasinoRoyale.GameStates
         private Rectangle _hostButtonRect;
         private Rectangle _inputBoxRect;
         
-        public MenuGameState(Game game) : base(game)
+        public MenuGameState(Game game, IGameStateManager stateManager) : base(game, stateManager)
         {
         }
         
@@ -70,11 +70,6 @@ namespace CasinoRoyale.GameStates
             SpriteBatch.Begin();
             DrawMenu();
             SpriteBatch.End();
-        }
-        
-        protected override void DrawOtherPlayers()
-        {
-            // No other players in menu state
         }
         
         private void HandleInput(KeyboardState keyboardState, MouseState mouseState)
@@ -164,11 +159,9 @@ namespace CasinoRoyale.GameStates
                 
                 Logger.Info("Starting Host game...");
                 
-                // Cast to CasinoRoyaleGame to access StartHost method
-                if (Game is CasinoRoyaleGame casinoGame)
-                {
-                    casinoGame.StartHost();
-                }
+                // Use state manager to transition (no casting needed!)
+                var hostState = new HostGameState(Game, StateManager);
+                StateManager.TransitionToState(hostState);
             }
             catch (Exception ex)
             {
@@ -187,11 +180,9 @@ namespace CasinoRoyale.GameStates
                 
                 Logger.Info($"Starting Client with lobby code: {lobbyCode}");
                 
-                // Cast to CasinoRoyaleGame to access JoinGame method
-                if (Game is CasinoRoyaleGame casinoGame)
-                {
-                    casinoGame.JoinGame(lobbyCode);
-                }
+                // Use state manager to transition (no casting needed!)
+                var clientState = new ClientGameState(Game, StateManager, lobbyCode);
+                StateManager.TransitionToState(clientState);
             }
             catch (Exception ex)
             {

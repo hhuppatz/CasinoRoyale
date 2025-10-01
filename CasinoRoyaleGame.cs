@@ -6,10 +6,8 @@ using CasinoRoyale.Utils;
 
 namespace CasinoRoyale
 {
-    /// <summary>
-    /// Unified game class that manages different game states
-    /// </summary>
-    public class CasinoRoyaleGame : Game
+    // Unified game class that manages different game states
+    public class CasinoRoyaleGame : Game, IGameStateManager
     {
         private GraphicsDeviceManager _graphics;
         private GameState _currentState;
@@ -38,7 +36,7 @@ namespace CasinoRoyale
             _font = Content.Load<SpriteFont>("Arial");
             
             // Start with menu state
-            SetState(new MenuGameState(this));
+            TransitionToState(new MenuGameState(this, this));
         }
         
         protected override void Update(GameTime gameTime)
@@ -53,10 +51,8 @@ namespace CasinoRoyale
             base.Draw(gameTime);
         }
         
-        /// <summary>
-        /// Sets the current game state
-        /// </summary>
-        public void SetState(GameState newState)
+        // Transitions to a new game state (implements IGameStateManager)
+        public void TransitionToState(GameState newState)
         {
             // Dispose current state
             _currentState?.Dispose();
@@ -69,24 +65,34 @@ namespace CasinoRoyale
             _currentState?.LoadContent();
         }
         
-        /// <summary>
-        /// Starts hosting a game
-        /// </summary>
+        // Returns to the main menu (implements IGameStateManager)
+        public void ReturnToMenu()
+        {
+            Logger.Info("Returning to main menu...");
+            TransitionToState(new MenuGameState(this, this));
+        }
+        
+        // Sets the current game state (legacy method - use TransitionToState instead)
+        [Obsolete("Use TransitionToState instead")]
+        public void SetState(GameState newState)
+        {
+            TransitionToState(newState);
+        }
+        
+        // Starts hosting a game (convenience method for external use)
         public void StartHost()
         {
             Logger.Info("Starting Host game...");
-            var hostState = new HostGameState(this);
-            SetState(hostState);
+            var hostState = new HostGameState(this, this);
+            TransitionToState(hostState);
         }
         
-        /// <summary>
-        /// Joins a game with the specified lobby code
-        /// </summary>
+        // Joins a game with the specified lobby code (convenience method for external use)
         public void JoinGame(string lobbyCode)
         {
             Logger.Info($"Joining game with lobby code: {lobbyCode}");
-            var clientState = new ClientGameState(this, lobbyCode);
-            SetState(clientState);
+            var clientState = new ClientGameState(this, this, lobbyCode);
+            TransitionToState(clientState);
         }
         
         protected override void Dispose(bool disposing)
