@@ -5,7 +5,7 @@ using Microsoft.Xna.Framework.Graphics;
 using CasinoRoyale.Classes.GameObjects.Interfaces;
 using CasinoRoyale.Classes.Networking;
 
-namespace CasinoRoyale.Classes.GameObjects
+namespace CasinoRoyale.Classes.GameObjects.Platforms
 {
     public class Platform : CasinoRoyale.Classes.GameObjects.Interfaces.IDrawable, IHitbox
 {

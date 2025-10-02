@@ -1,10 +1,7 @@
-using System;
-using System.Collections.Generic;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Content;
 using CasinoRoyale.Classes.GameObjects;
-using CasinoRoyale.Classes.Networking;
 using CasinoRoyale.Utils;
 
 namespace CasinoRoyale.Classes.GameSystems
@@ -37,7 +34,7 @@ namespace CasinoRoyale.Classes.GameSystems
             
             if (WorldObjects.Platforms != null && WorldObjects.CasinoMachines != null)
             {
-                PhysicsSystem.Initialize(GameArea, WorldObjects.Platforms, WorldObjects.CasinoMachines, gameProperties);
+                PhysicsSystem.Initialize(gameProperties);
             }
             else
             {
@@ -77,54 +74,6 @@ namespace CasinoRoyale.Classes.GameSystems
             
             WorldObjects?.DrawPlatforms(spriteBatch, camera, ratio);
             WorldObjects?.DrawCasinoMachines(spriteBatch, camera, ratio);
-        }
-        
-        // Initialize physics system
-        public void InitPhysics()
-        {
-            if (WorldObjects?.Platforms == null || WorldObjects?.CasinoMachines == null)
-            {
-                Logger.Error("WorldObjects, Platforms, or CasinoMachines are null in InitPhysics()!");
-                return;
-            }
-            
-            if (GameArea == Rectangle.Empty)
-            {
-                Logger.Error("GameArea is not initialized in InitPhysics()!");
-                return;
-            }
-            
-            PhysicsSystem.Initialize(GameArea, WorldObjects.Platforms, WorldObjects.CasinoMachines, gameProperties);
-            Logger.Info("Physics system initialized successfully");
-        }
-        
-        // Load player texture from content manager
-        public Texture2D LoadPlayerTexture(ContentManager content)
-        {
-            if (content == null)
-            {
-                Logger.Error("ContentManager is null in LoadPlayerTexture()!");
-                return null;
-            }
-            
-            if (gameProperties == null)
-            {
-                Logger.Error("gameProperties is null in LoadPlayerTexture()!");
-                return null;
-            }
-            
-            string playerImageName = gameProperties.get("player.image", "ball");
-            Logger.Info($"Loading player texture: {playerImageName}");
-            
-            try
-            {
-                return content.Load<Texture2D>(playerImageName);
-            }
-            catch (Exception ex)
-            {
-                Logger.Error($"Failed to load player texture '{playerImageName}': {ex.Message}");
-                return null;
-            }
         }
         
         // Calculates player origin based on game area and texture height

@@ -3,10 +3,19 @@ using System.Collections.Generic;
 using Microsoft.Xna.Framework;
 using CasinoRoyale.Classes.GameObjects;
 using CasinoRoyale.Utils;
+using CasinoRoyale.Classes.GameObjects.CasinoMachines;
+using CasinoRoyale.Classes.GameObjects.Platforms;
 
 namespace CasinoRoyale.Classes.GameSystems
 {
-    public class PhysicsSystem
+public struct CollisionResult(Vector2 movement, bool horizontalBlocked, bool verticalBlocked)
+{
+    public Vector2 movement = movement;
+    public bool horizontalBlocked = horizontalBlocked;
+    public bool verticalBlocked = verticalBlocked;
+}
+
+public class PhysicsSystem
 {
     public readonly float GRAVITY = 9.8f;
     private static PhysicsSystem _instance;
@@ -21,184 +30,258 @@ namespace CasinoRoyale.Classes.GameSystems
         } 
     }
 
-    private Rectangle _gameArea;
-    public Rectangle GameArea { get => _gameArea; }
-    private List<Platform> _platforms;
-    public List<Platform> Platforms { get => _platforms; }
-    private List<CasinoMachine> _casinoMachines;
-    public List<CasinoMachine> CasinoMachines { get => _casinoMachines; }
-    private Properties _gameProperties;
-
-    private PhysicsSystem(Rectangle gameArea, List<Platform> platforms, List<CasinoMachine> casinoMachines, Properties gameProperties)
+    private readonly Properties _gameProperties;
+    
+    private PhysicsSystem(Properties gameProperties)
     {
-        _gameArea = gameArea;
-        _platforms = platforms;
-        _casinoMachines = casinoMachines;
         _gameProperties = gameProperties;
         GRAVITY = float.Parse(_gameProperties.get("gravity"));
     }
 
-    public static void Initialize(Rectangle gameArea, List<Platform> platforms, List<CasinoMachine> casinoMachines, Properties gameProperties)
+    public static void Initialize(Properties gameProperties)
     {
-        _instance = new PhysicsSystem(gameArea, platforms, casinoMachines, gameProperties);
+        _instance = new PhysicsSystem(gameProperties);
     }
 
     // Coordinate system has 0,0 in top left and grows more positive to the right and down
-    public void EnforceMovementRules(PlayableCharacter player, float dt)
+    public static void EnforceMovementRules(Rectangle gameArea, GameWorldObjects gameWorldObjects, PlayableCharacter player, float dt)
     {
-        EnforcePlayerGravity(player, dt);
+        EnforcePlayerGravity(gameArea, gameWorldObjects, player, dt);
 
         // Calculate attempted movement
         Vector2 attemptedMovement = player.Velocity * dt;
         
-        // Check and resolve collisions, getting the maximum allowed movement
-        Vector2 realMovement = ResolveCollisions(player, attemptedMovement);
+        // Check and resolve collisions, getting the maximum allowed movement and collision info
+        var collisionResult = ResolveCollisions(gameWorldObjects, player, attemptedMovement);
+        Vector2 realMovement = collisionResult.movement;
         
         // Apply the resolved movement to the player
         player.Coords += realMovement;
+        
+        // Handle velocity changes based on collision response
+        if (collisionResult.horizontalBlocked && Math.Abs(player.Velocity.X) > 0.1f)
+        {
+            // Stop horizontal velocity when hitting a wall
+            player.Velocity = new Vector2(0, player.Velocity.Y);
+        }
+        
+        if (collisionResult.verticalBlocked)
+        {
+            // Handle vertical collision response
+            if (player.Velocity.Y < 0 && Math.Abs(realMovement.Y) < Math.Abs(attemptedMovement.Y))
+            {
+                // Player was moving upward and hit ceiling/platform from below - stop upward velocity
+                player.Velocity = new Vector2(player.Velocity.X, 0);
+            }
+            else if (player.Velocity.Y > 0 && Math.Abs(realMovement.Y) < Math.Abs(attemptedMovement.Y))
+            {
+                // Player was moving downward and hit ground/platform from above - stop downward velocity
+                player.Velocity = new Vector2(player.Velocity.X, 0);
+            }
+        }
         
         // Keep player's hitbox within game area bounds
         Rectangle playerHitbox = player.Hitbox;
         
         // Calculate the maximum allowed coordinates to keep the entire hitbox within bounds
-        float maxX = GameArea.Right - playerHitbox.Width;
-        float maxY = GameArea.Bottom - playerHitbox.Height;
-        float minX = GameArea.Left;
-        float minY = GameArea.Top;
+        float maxX = gameArea.Right - playerHitbox.Width;
+        float maxY = gameArea.Bottom - playerHitbox.Height;
+        float minX = gameArea.Left;
+        float minY = gameArea.Top;
         
         // Clamp coordinates to ensure hitbox stays within game area
         player.Coords = Vector2.Min(Vector2.Max(player.Coords, new Vector2(minX, minY)), new Vector2(maxX, maxY));        
     }
     
-    private Vector2 ResolveCollisions(PlayableCharacter player, Vector2 attemptedMovement)
+    private static CollisionResult ResolveCollisions(GameWorldObjects gameWorldObjects, PlayableCharacter player, Vector2 attemptedMovement)
     {
-        Vector2 realMovement = attemptedMovement;
+        // Simple and reliable collision resolution using step-by-step movement
+        Vector2 resolvedMovement = Vector2.Zero;
+        bool horizontalBlocked = false;
+        bool verticalBlocked = false;
         
-        // Case 1: Only horizontal movement
-        if (attemptedMovement.X != 0 && attemptedMovement.Y == 0)
+        // Test if full diagonal movement is safe
+        Rectangle diagonalTestHitbox = new(
+            player.Hitbox.X + (int)attemptedMovement.X,
+            player.Hitbox.Y + (int)attemptedMovement.Y,
+            player.Hitbox.Width,
+            player.Hitbox.Height
+        );
+        
+        // Check if diagonal movement causes any collision
+        bool hasDiagonalCollision = false;
+        foreach (var platform in gameWorldObjects.Platforms ?? [])
         {
-            realMovement.X = ResolveHorizontalCollision(player.Hitbox, attemptedMovement).X;
-            realMovement.Y = 0;
+            if (diagonalTestHitbox.Intersects(platform.Hitbox))
+            {
+                hasDiagonalCollision = true;
+                break;
+            }
         }
-        // Case 2: Only vertical movement
-        else if (attemptedMovement.X == 0 && attemptedMovement.Y != 0)
+        
+        if (!hasDiagonalCollision)
         {
-            realMovement.X = 0;
-            realMovement.Y = ResolveVerticalCollision(player.Hitbox, attemptedMovement).Y;
+            // No collision, allow full movement
+            return new CollisionResult(attemptedMovement, false, false);
         }
-        // Case 3: Diagonal movement - resolve horizontal first, then vertical if needed
-        else if (attemptedMovement.X != 0 && attemptedMovement.Y != 0)
+        
+        // Resolve horizontal movement first (no vertical movement during horizontal test)
+        if (attemptedMovement.X != 0)
         {
-            // First, resolve horizontal movement
-            realMovement.X = ResolveHorizontalCollision(player.Hitbox, attemptedMovement).X;
+            float originalX = attemptedMovement.X;
+            resolvedMovement.X = ResolveAxisMovement(gameWorldObjects, player, attemptedMovement.X, 0f, true);
             
-            // Create new hitbox after horizontal movement
-            Rectangle newHitboxAfterHorizontal = new Rectangle(
-                player.Hitbox.X + (int)realMovement.X,
-                player.Hitbox.Y,
+            // Check if horizontal movement was blocked
+            if (Math.Abs(resolvedMovement.X) < Math.Abs(originalX))
+            {
+                horizontalBlocked = true;
+            }
+        }
+        
+        // Resolve vertical movement using the RESOLVED horizontal position
+        if (attemptedMovement.Y != 0)
+        {
+            float originalY = attemptedMovement.Y;
+            resolvedMovement.Y = ResolveAxisMovement(gameWorldObjects, player, resolvedMovement.X, attemptedMovement.Y, false);
+            
+            // Check if vertical movement was blocked
+            if (Math.Abs(resolvedMovement.Y) < Math.Abs(originalY))
+            {
+                verticalBlocked = true;
+            }
+        }
+        
+        return new CollisionResult(resolvedMovement, horizontalBlocked, verticalBlocked);
+    }
+    
+    private static float ResolveAxisMovement(GameWorldObjects gameWorldObjects, PlayableCharacter player, float xMovement, float yMovement, bool isHorizontal)
+    {
+        float movementDistance = isHorizontal ? xMovement : yMovement;
+        
+        // If no movement, return 0
+        if (Math.Abs(movementDistance) < 0.001f) return 0f;
+        
+        // Get all potential colliders (platforms)
+        var platforms = gameWorldObjects.Platforms;
+        if (platforms == null || platforms.Count == 0) return movementDistance;
+        
+        // Check if the full movement is safe first
+        Rectangle fullMovementHitbox;
+        if (isHorizontal)
+        {
+            fullMovementHitbox = new(
+                player.Hitbox.X + (int)movementDistance,
+                player.Hitbox.Y + (int)yMovement,
                 player.Hitbox.Width,
                 player.Hitbox.Height
             );
-            
-            // Check if vertical movement is still needed after horizontal resolution
-            Vector2 remainingVerticalMovement = new Vector2(0, attemptedMovement.Y);
-            Vector2 resolvedVertical = ResolveVerticalCollision(newHitboxAfterHorizontal, remainingVerticalMovement);
-            
-            // Only apply vertical movement if it's still valid
-            realMovement.Y = resolvedVertical.Y;
+        }
+        else
+        {
+            fullMovementHitbox = new(
+                player.Hitbox.X + (int)xMovement,
+                player.Hitbox.Y + (int)movementDistance,
+                player.Hitbox.Width,
+                player.Hitbox.Height
+            );
         }
         
-        return realMovement;
-    }
-
-    private Vector2 ResolveHorizontalCollision(Rectangle hitbox, Vector2 attemptedMovement)
-    {
-        Vector2 maxMovement = attemptedMovement;
-        
-        // Create the hitbox that would result from the attempted movement
-        Rectangle newHitbox = new(
-            hitbox.X + (int)attemptedMovement.X,
-            hitbox.Y,
-            hitbox.Width,
-            hitbox.Height
-        );
-        
-        // Check collision with platforms
-        foreach (Platform platform in _platforms)
+        // Check if full movement causes any collision
+        bool hasFullMovementCollision = false;
+        foreach (var platform in platforms)
         {
-            if (newHitbox.Intersects(platform.Hitbox))
+            if (fullMovementHitbox.Intersects(platform.Hitbox))
             {
-                // Calculate the maximum allowed movement in X direction
-                if (attemptedMovement.X > 0) // Moving right
-                {
-                    int maxX = platform.Hitbox.Left - hitbox.Width;
-                    maxMovement.X = Math.Min(maxMovement.X, maxX - hitbox.X);
-                }
-                else if (attemptedMovement.X < 0) // Moving left
-                {
-                    int maxX = platform.Hitbox.Right;
-                    maxMovement.X = Math.Max(maxMovement.X, maxX - hitbox.X);
-                }
+                hasFullMovementCollision = true;
+                break;
             }
         }
         
-        return new Vector2(maxMovement.X, 0);
-    }
-    
-    private Vector2 ResolveVerticalCollision(Rectangle hitbox, Vector2 attemptedMovement)
-    {
-        Vector2 maxMovement = attemptedMovement;
+        // If no collision with full movement, allow it
+        if (!hasFullMovementCollision) return movementDistance;
         
-        // Create the hitbox that would result from the attempted movement
-        Rectangle newHitbox = new(
-            hitbox.X,
-            hitbox.Y + (int)attemptedMovement.Y,
-            hitbox.Width,
-            hitbox.Height
-        );
+        // Use step-by-step movement instead of binary search for more reliable results
+        float stepSize = Math.Sign(movementDistance); // 1 or -1
+        float currentMovement = 0f;
         
-        // Check collision with platforms
-        foreach (Platform platform in _platforms)
+        // Step through the movement one pixel at a time
+        while (Math.Abs(currentMovement) < Math.Abs(movementDistance))
         {
-            if (newHitbox.Intersects(platform.Hitbox))
+            float nextMovement = currentMovement + stepSize;
+            
+            // Create test hitbox for next position
+            Rectangle testHitbox;
+            if (isHorizontal)
             {
-                // Calculate the maximum allowed movement in Y direction
-                if (attemptedMovement.Y > 0) // Moving down
+                testHitbox = new(
+                    player.Hitbox.X + (int)nextMovement,
+                    player.Hitbox.Y + (int)yMovement,
+                    player.Hitbox.Width,
+                    player.Hitbox.Height
+                );
+            }
+            else
+            {
+                testHitbox = new(
+                    player.Hitbox.X + (int)xMovement,
+                    player.Hitbox.Y + (int)nextMovement,
+                    player.Hitbox.Width,
+                    player.Hitbox.Height
+                );
+            }
+            
+            // Check if this step would cause a collision
+            bool hasCollision = false;
+            foreach (var platform in platforms)
+            {
+                if (testHitbox.Intersects(platform.Hitbox))
                 {
-                    int maxY = platform.Hitbox.Top - hitbox.Height;
-                    maxMovement.Y = Math.Min(maxMovement.Y, maxY - hitbox.Y);
-                }
-                else if (attemptedMovement.Y < 0) // Moving up
-                {
-                    int maxY = platform.Hitbox.Bottom;
-                    maxMovement.Y = Math.Max(maxMovement.Y, maxY - hitbox.Y);
+                    hasCollision = true;
+                    break;
                 }
             }
+            
+            if (hasCollision)
+            {
+                // Collision detected, stop at current position
+                break;
+            }
+            
+            // No collision, continue to next step
+            currentMovement = nextMovement;
         }
         
-        return new Vector2(0, maxMovement.Y);
+        return currentMovement;
     }
 
-    public static void EnforcePlayerGravity(PlayableCharacter player, float dt)
-    {   
-        if (!CasinoRoyale.Classes.GameSystems.PhysicsSystem.Instance.IsPlayerGrounded(player))
-        {   
+    public static void EnforcePlayerGravity(Rectangle gameArea, GameWorldObjects gameWorldObjects, PlayableCharacter player, float dt)
+    {
+        if (!IsPlayerGrounded(gameArea, gameWorldObjects, player))
+        {
             player.Velocity += new Vector2(0, CasinoRoyale.Classes.GameSystems.PhysicsSystem.Instance.GRAVITY * player.Mass * dt);
         }
     }
     
-    public bool IsPlayerGrounded(PlayableCharacter player)
+    public static bool IsPlayerGrounded(Rectangle gameArea, GameWorldObjects gameWorldObjects, PlayableCharacter player)
     {
         // Check if player is at the bottom of the game area (ground)
-        bool atBottom = player.Hitbox.Bottom >= _gameArea.Bottom;
+        bool atBottom = player.Hitbox.Bottom >= gameArea.Bottom;
         if (atBottom)
         {
             return true;
         }
         
-        foreach (Platform platform in Platforms)
+        Rectangle belowPlayerHitbox = new(
+            player.Hitbox.X,
+            player.Hitbox.Y + player.Hitbox.Height,
+            player.Hitbox.Width,
+            2
+        );
+        
+        // Check if player is grounded on a platform
+        foreach (Platform platform in gameWorldObjects.Platforms)
         {
-            if (player.Hitbox.Intersects(platform.Hitbox))
+            if (belowPlayerHitbox.Intersects(platform.Hitbox))
             {
                 return true;
             }

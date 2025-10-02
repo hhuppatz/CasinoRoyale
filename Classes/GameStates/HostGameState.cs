@@ -10,12 +10,12 @@ using CasinoRoyale.Classes.MonogameMethodExtensions;
 using CasinoRoyale.Classes.Networking;
 using CasinoRoyale.Utils;
 using CasinoRoyale.Classes.GameSystems;
+using CasinoRoyale.Classes.GameObjects.CasinoMachines;
+using CasinoRoyale.Classes.GameObjects.Platforms;
 
 namespace CasinoRoyale.Classes.GameStates
 {
-    /// <summary>
-    /// Game state for hosting a game
-    /// </summary>
+    // Game state for hosting a game
     public class HostGameState : GameState, INetEventListener
     {
         // Game world and player
@@ -167,7 +167,7 @@ namespace CasinoRoyale.Classes.GameStates
             // Common update logic
             if (LocalPlayer != null)
             {
-                LocalPlayer.TryMovePlayer(KeyboardState, PreviousKeyboardState, deltaTime);
+                LocalPlayer.TryMovePlayer(KeyboardState, PreviousKeyboardState, deltaTime, GameWorld);
                 MainCamera.MoveToFollowPlayer(LocalPlayer);
             }
             

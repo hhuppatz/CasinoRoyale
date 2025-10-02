@@ -2,7 +2,7 @@ using System;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 
-namespace CasinoRoyale.Classes.GameObjects
+namespace CasinoRoyale.Classes.GameObjects.Platforms
 {
     public class PlatformFactory(Texture2D platTex)
 {

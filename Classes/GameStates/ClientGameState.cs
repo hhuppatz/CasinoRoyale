@@ -9,12 +9,12 @@ using CasinoRoyale.Classes.MonogameMethodExtensions;
 using CasinoRoyale.Classes.Networking;
 using CasinoRoyale.Utils;
 using CasinoRoyale.Classes.GameSystems;
+using CasinoRoyale.Classes.GameObjects.CasinoMachines;
+using CasinoRoyale.Classes.GameObjects.Platforms;
 
 namespace CasinoRoyale.Classes.GameStates
 {
-    /// <summary>
-    /// Game state for joining a game as a client
-    /// </summary>
+    // Game state for joining a game as a client
     public class ClientGameState(Game game, IGameStateManager stateManager, string lobbyCode) : GameState(game, stateManager), INetEventListener
     {
         // Game world and player
@@ -133,7 +133,7 @@ namespace CasinoRoyale.Classes.GameStates
             // Common update logic
             if (LocalPlayer != null)
             {
-                LocalPlayer.TryMovePlayer(KeyboardState, PreviousKeyboardState, deltaTime);
+                LocalPlayer.TryMovePlayer(KeyboardState, PreviousKeyboardState, deltaTime, GameWorld);
                 MainCamera.MoveToFollowPlayer(LocalPlayer);
             }
             

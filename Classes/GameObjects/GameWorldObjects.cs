@@ -2,9 +2,9 @@ using System.Collections.Generic;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Content;
-using CasinoRoyale.Classes.GameObjects;
-using CasinoRoyale.Classes.Networking;
 using CasinoRoyale.Utils;
+using CasinoRoyale.Classes.GameObjects.CasinoMachines;
+using CasinoRoyale.Classes.GameObjects.Platforms;
 
 namespace CasinoRoyale.Classes.GameObjects
 {
@@ -38,7 +38,7 @@ namespace CasinoRoyale.Classes.GameObjects
         {
             // Calculate player spawn buffer - this should be the height of the bottom safe zone
             // where we don't want to spawn platforms (to keep area around player clear)
-            int playerSpawnBuffer = 200; // Fixed value for bottom buffer zone
+            int playerSpawnBuffer = 90; // Fixed value for bottom buffer zone
             
             // Generate platforms using PlatformLayout
             Platforms = PlatformLayout.GenerateStandardRandPlatLayout(

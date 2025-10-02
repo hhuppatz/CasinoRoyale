@@ -2,6 +2,8 @@
 using LiteNetLib.Utils;
 using Microsoft.Xna.Framework;
 using CasinoRoyale.Classes.GameObjects;
+using CasinoRoyale.Classes.GameObjects.CasinoMachines;
+using CasinoRoyale.Classes.GameObjects.Platforms;
 
 namespace CasinoRoyale.Classes.Networking
 {

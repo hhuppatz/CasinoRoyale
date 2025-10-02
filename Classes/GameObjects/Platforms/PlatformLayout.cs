@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 
-namespace CasinoRoyale.Classes.GameObjects
+namespace CasinoRoyale.Classes.GameObjects.Platforms
 {
     public static class PlatformLayout
 {
@@ -21,12 +21,12 @@ namespace CasinoRoyale.Classes.GameObjects
         Until each 'rectangle' of game area is given chance to spawn platform.
         Thuggish implementation, will likely replace later.
     */
-    public static List<Platform> GenerateStandardRandPlatLayout(Texture2D platTex, Rectangle gameArea, int minLen, int maxLen, int horizontalDistApart, int verticalDistApart, int platSpawnChance, int playerSpawnBuffer = 200)
+    public static List<Platform> GenerateStandardRandPlatLayout(Texture2D platTex, Rectangle gameArea, int minLen, int maxLen, int horizontalDistApart, int verticalDistApart, int platSpawnChance, int playerSpawnBuffer = 100)
     {
         uint platNum = 0;
-        Random rand = new Random();
-        PlatformFactory platformFactory = new PlatformFactory(platTex);
-        List<Platform> platforms = new List<Platform>();
+        Random rand = new();
+        PlatformFactory platformFactory = new(platTex);
+        List<Platform> platforms = [];
 
         // Start platform generation above the player spawn area
         int i = gameArea.Y + playerSpawnBuffer;

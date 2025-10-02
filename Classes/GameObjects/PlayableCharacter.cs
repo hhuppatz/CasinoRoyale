@@ -6,6 +6,7 @@ using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using CasinoRoyale.Classes.Networking;
+using CasinoRoyale.Classes.GameSystems;
 
 namespace CasinoRoyale.Classes.GameObjects
 {
@@ -43,19 +44,22 @@ namespace CasinoRoyale.Classes.GameObjects
     private float currentTime = 0f;
 
     // Include previous keyboard state to check for key releases
-    public void TryMovePlayer(KeyboardState ks, KeyboardState previousKs, float dt)
+    public void TryMovePlayer(KeyboardState ks, KeyboardState previousKs, float dt, GameWorld gameWorld)
     {
         bool m_playerAttemptedJump = false;
         
+        // Reset horizontal velocity each frame (for responsive controls)
+        Velocity = new Vector2(0, Velocity.Y);
+        
         if (ks.IsKeyDown(Keys.A)) // Can be held
         {
-            // Horizontal movement should be instant (no acceleration)
-            Coords = new Vector2(Coords.X - MaxRunSpeed * dt, Coords.Y);
+            // Set horizontal velocity instead of directly modifying coordinates
+            Velocity = new Vector2(-MaxRunSpeed, Velocity.Y);
         }
         if (ks.IsKeyDown(Keys.D)) // Can be held
         {
-            // Horizontal movement should be instant (no acceleration)
-            Coords = new Vector2(Coords.X + MaxRunSpeed * dt, Coords.Y);
+            // Set horizontal velocity instead of directly modifying coordinates
+            Velocity = new Vector2(MaxRunSpeed, Velocity.Y);
         }
         if (ks.GetPressedKeys().Contains(Keys.W)) // Needs to be pressed
         {
@@ -63,24 +67,23 @@ namespace CasinoRoyale.Classes.GameObjects
         }
 
         // Update velocity according to forces and movement requests
-        UpdateJump(m_playerAttemptedJump);
+        UpdateJump(m_playerAttemptedJump, gameWorld);
 
-        // Enforce movement rules from physics system
-        CasinoRoyale.Classes.GameSystems.PhysicsSystem.Instance.EnforceMovementRules(this, dt);
+        // Enforce movement rules from physics system (this will handle collision detection)
+        PhysicsSystem.EnforceMovementRules(gameWorld.GameArea, gameWorld.WorldObjects, this, dt);
     }
 
-    public void UpdateJump(bool m_playerAttemptedJump)
+    public void UpdateJump(bool m_playerAttemptedJump, GameWorld gameWorld)
     {
         // Deal with player jumping - only apply jump velocity once when jump starts
-        if (m_playerAttemptedJump && !InJump)
+        if (m_playerAttemptedJump && !InJump && PhysicsSystem.IsPlayerGrounded(gameWorld.GameArea, gameWorld.WorldObjects, this))
         {
             // Start jump with initial velocity
             InJump = true;
             Velocity = new Vector2(0, -InitialJumpVelocity);
         }
-
         // Check if player has landed after falling (end jump state)
-        if (InJump && Velocity.Y >= 0 && CasinoRoyale.Classes.GameSystems.PhysicsSystem.Instance.IsPlayerGrounded(this)) InJump = false;
+        else if (InJump && Velocity.Y >= 0 && PhysicsSystem.IsPlayerGrounded(gameWorld.GameArea, gameWorld.WorldObjects, this)) InJump = false;
 
     }
 

@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 
-namespace CasinoRoyale.Classes.GameObjects
+namespace CasinoRoyale.Classes.GameObjects.CasinoMachines
 {
     public class CasinoMachineFactory
 {
@@ -15,7 +15,7 @@ namespace CasinoRoyale.Classes.GameObjects
     public List<CasinoMachine> SpawnCasinoMachines()
     {
         uint id = 0;
-        List<CasinoMachine> machines = new List<CasinoMachine>();
+        List<CasinoMachine> machines = new();
         machines.Add(new CasinoMachine(id, machineTex, new Vector2(200,0)));
         id++;
         return machines;
