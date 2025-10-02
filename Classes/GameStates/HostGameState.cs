@@ -5,12 +5,13 @@ using LiteNetLib;
 using LiteNetLib.Utils;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
-using CasinoRoyale.GameObjects;
-using CasinoRoyale.MonogameMethodExtensions;
-using CasinoRoyale.Networking;
+using CasinoRoyale.Classes.GameObjects;
+using CasinoRoyale.Classes.MonogameMethodExtensions;
+using CasinoRoyale.Classes.Networking;
 using CasinoRoyale.Utils;
+using CasinoRoyale.Classes.GameSystems;
 
-namespace CasinoRoyale.GameStates
+namespace CasinoRoyale.Classes.GameStates
 {
     /// <summary>
     /// Game state for hosting a game
@@ -27,7 +28,7 @@ namespace CasinoRoyale.GameStates
         private LiteNetRelayManager relayManager;
         private NetDataWriter writer;
         private NetPacketProcessor packetProcessor;
-        private Dictionary<uint, NetworkPlayer> networkPlayers = new();
+        private readonly Dictionary<uint, NetworkPlayer> networkPlayers = [];
         private float serverUpdateTimer = 0f;
         private float gameTime = 0f; // Track game time for state buffering
         private readonly uint MAX_PLAYERS = 6;
@@ -107,10 +108,7 @@ namespace CasinoRoyale.GameStates
         {
             try
             {
-                Logger.Info("HostGameState.LoadContent() starting...");
-                
                 base.LoadContent();
-                Logger.Info("Base LoadContent() completed");
                 
                 // Load player texture using GameWorld
                 if (GameWorld == null)
@@ -119,29 +117,34 @@ namespace CasinoRoyale.GameStates
                     return;
                 }
                 
-                PlayerTexture = GameWorld.LoadPlayerTexture(Content);
-                Logger.Info("Player texture loaded");
+                string playerImageName = GameProperties.get("player.image", "ball");
+                Logger.Info($"Loading player texture: {playerImageName}");
+                PlayerTexture = Content.Load<Texture2D>(playerImageName);
+
+                // Initialize game world
+                if (PlayerOrigin == Vector2.Zero)
+                {
+                    // Set default player origin if not already set
+                    PlayerOrigin = new Vector2(100, 100);
+                }
+                GameWorld.InitializeGameWorld(Content, PlayerOrigin);
                 
-                // Generate game world
-                GenerateGameWorld();
-                Logger.Info("Game world generated");
+                // Calculate player spawn buffer using GameWorld
+                if (PlayerTexture != null)
+                {
+                    PlayerOrigin = GameWorld.CalculatePlayerOrigin(PlayerTexture.Height);
+                }
                 
-                // Create local player
+                Logger.Debug($"Player spawn: gameArea={GameWorld.GameArea}, playerSpawnBuffer={PlayerTexture.Height * 2}, playerOrigin={PlayerOrigin}");
+                
+                // Create local player using texture and origin
                 CreateLocalPlayer();
-                Logger.Info("Local player created");
                 
-                // Debug: Print player hitbox info (same as original Host)
+                // Debug: Print player hitbox info
                 Logger.Info($"Player texture dimensions: {PlayerTexture.Width}x{PlayerTexture.Height}");
                 Logger.Info($"Player {LocalPlayer.GetID()} {LocalPlayer.GetUsername()} created at {LocalPlayer.Coords}");
                 
-                // Initialize physics and camera
-                GameWorld.InitPhysics();
-                Logger.Info("Physics initialized");
-                
                 InitializeCamera();
-                Logger.Info("Camera initialized");
-                
-                Logger.Info("HostGameState.LoadContent() completed successfully!");
             }
             catch (Exception ex)
             {
@@ -272,22 +275,14 @@ namespace CasinoRoyale.GameStates
             }
         }
         
-        private void GenerateGameWorld()
-        {
-            // Load game area properties using GameWorld
-            GameWorld.LoadGameArea();
-            
-            // Calculate player spawn buffer using GameWorld
-            PlayerOrigin = GameWorld.CalculatePlayerOrigin(PlayerTexture.Height);
-            
-            Logger.Debug($"Player spawn: gameArea={GameWorld.GameArea}, playerSpawnBuffer={PlayerTexture.Height * 2}, playerOrigin={PlayerOrigin}");
-            
-            // Generate game world using GameWorld
-            GameWorld.GenerateGameWorld(Content, PlayerOrigin);
-        }
-        
         private void CreateLocalPlayer()
         {
+            if (PlayerTexture == null)
+            {
+                Logger.Error("PlayerTexture is null in CreateLocalPlayer()!");
+                return;
+            }
+            
             LocalPlayer = new PlayableCharacter(
                 playerIDs.GetNextID(),
                 username,
@@ -411,6 +406,13 @@ namespace CasinoRoyale.GameStates
             // Create new player for the client
             var spawnPosition = CalculateSpawnPosition();
             uint newPlayerId = playerIDs.GetNextID();
+            
+            if (PlayerTexture == null)
+            {
+                Logger.Error("PlayerTexture is null when creating new player!");
+                return;
+            }
+            
             var newPlayer = new PlayableCharacter(
                 newPlayerId,
                 joinPacket.username,
@@ -574,6 +576,12 @@ namespace CasinoRoyale.GameStates
         
         private Vector2 CalculateSpawnPosition()
         {
+            if (PlayerTexture == null)
+            {
+                Logger.Error("PlayerTexture is null in CalculateSpawnPosition()!");
+                return PlayerOrigin;
+            }
+            
             // Calculate spawn position for this client (offset from host spawn)
             // Use a larger offset to avoid collision with casino machines and other objects
             Vector2 clientSpawnPosition = PlayerOrigin + new Vector2(nextSpawnOffset * 200, 0); // 200 pixels apart horizontally
@@ -603,6 +611,12 @@ namespace CasinoRoyale.GameStates
         
         private void DrawLobbyCode()
         {
+            if (Font == null || GraphicsDevice == null)
+            {
+                Logger.Error("Font or GraphicsDevice is null in DrawLobbyCode()!");
+                return;
+            }
+            
             // Draw lobby code in top-left corner with smaller, compact text
             var lobbyText = $"LOBBY: {currentLobbyCode}";
             var scale = 0.7f; // Smaller scale for corner display

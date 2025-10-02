@@ -1,8 +1,8 @@
 using System;
 using Microsoft.Xna.Framework;
-using CasinoRoyale.GameObjects.Interfaces;
+using CasinoRoyale.Classes.GameObjects.Interfaces;
 
-namespace CasinoRoyale.GameObjects
+namespace CasinoRoyale.Classes.GameObjects
 {
     public class GameEntityRigidBody : IRigidBody, IHitbox, IMovement
 {

@@ -1,9 +1,10 @@
 using System;
 using System.Collections.Generic;
 using Microsoft.Xna.Framework;
+using CasinoRoyale.Classes.GameObjects;
 using CasinoRoyale.Utils;
 
-namespace CasinoRoyale.GameObjects
+namespace CasinoRoyale.Classes.GameSystems
 {
     public class PhysicsSystem
 {
@@ -180,9 +181,9 @@ namespace CasinoRoyale.GameObjects
 
     public static void EnforcePlayerGravity(PlayableCharacter player, float dt)
     {   
-        if (!CasinoRoyale.GameObjects.PhysicsSystem.Instance.IsPlayerGrounded(player))
+        if (!CasinoRoyale.Classes.GameSystems.PhysicsSystem.Instance.IsPlayerGrounded(player))
         {   
-            player.Velocity += new Vector2(0, CasinoRoyale.GameObjects.PhysicsSystem.Instance.GRAVITY * player.Mass * dt);
+            player.Velocity += new Vector2(0, CasinoRoyale.Classes.GameSystems.PhysicsSystem.Instance.GRAVITY * player.Mass * dt);
         }
     }
     

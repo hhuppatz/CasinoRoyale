@@ -2,12 +2,12 @@ using System;
 using LiteNetLib.Utils;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
-using CasinoRoyale.GameObjects.Interfaces;
-using CasinoRoyale.Networking;
+using CasinoRoyale.Classes.GameObjects.Interfaces;
+using CasinoRoyale.Classes.Networking;
 
-namespace CasinoRoyale.GameObjects
+namespace CasinoRoyale.Classes.GameObjects
 {
-    public class Platform : CasinoRoyale.GameObjects.Interfaces.IDrawable, IHitbox
+    public class Platform : CasinoRoyale.Classes.GameObjects.Interfaces.IDrawable, IHitbox
 {
     private uint platNum;
     private Vector2 TL;

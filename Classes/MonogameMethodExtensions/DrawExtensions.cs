@@ -1,15 +1,15 @@
-using CasinoRoyale.GameObjects;
-using CasinoRoyale.GameObjects.Interfaces;
+using CasinoRoyale.Classes.GameObjects;
+using CasinoRoyale.Classes.GameObjects.Interfaces;
 using CasinoRoyale.Utils;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 
-namespace CasinoRoyale.MonogameMethodExtensions
+namespace CasinoRoyale.Classes.MonogameMethodExtensions
 {
     public static class DrawExtensions
     {
         public static void DrawEntity<T>(this SpriteBatch _spriteBatch, MainCamera _mainCamera, T drawable)
-        where T : CasinoRoyale.GameObjects.Interfaces.IObject, CasinoRoyale.GameObjects.Interfaces.IDrawable
+        where T : CasinoRoyale.Classes.GameObjects.Interfaces.IObject, CasinoRoyale.Classes.GameObjects.Interfaces.IDrawable
         {
             _spriteBatch.Draw(drawable.GetTex(),
                                 _mainCamera.TransformToView(drawable.Coords),

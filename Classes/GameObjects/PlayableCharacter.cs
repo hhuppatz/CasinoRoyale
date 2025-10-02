@@ -5,11 +5,11 @@ using LiteNetLib.Utils;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
-using CasinoRoyale.Networking;
+using CasinoRoyale.Classes.Networking;
 
-namespace CasinoRoyale.GameObjects
+namespace CasinoRoyale.Classes.GameObjects
 {
-    public class PlayableCharacter(uint pid, string username, Texture2D tex, Vector2 coords, Vector2 velocity, float mass, float initialJumpVelocity, float maxRunSpeed, Rectangle hitbox, bool awake) : GameEntity(coords, velocity, hitbox, awake), CasinoRoyale.GameObjects.Interfaces.IDrawable
+    public class PlayableCharacter(uint pid, string username, Texture2D tex, Vector2 coords, Vector2 velocity, float mass, float initialJumpVelocity, float maxRunSpeed, Rectangle hitbox, bool awake) : GameEntity(coords, velocity, hitbox, awake), CasinoRoyale.Classes.GameObjects.Interfaces.IDrawable
 {
     private readonly uint pid = pid;
     private readonly string username = username;
@@ -66,7 +66,7 @@ namespace CasinoRoyale.GameObjects
         UpdateJump(m_playerAttemptedJump);
 
         // Enforce movement rules from physics system
-        CasinoRoyale.GameObjects.PhysicsSystem.Instance.EnforceMovementRules(this, dt);
+        CasinoRoyale.Classes.GameSystems.PhysicsSystem.Instance.EnforceMovementRules(this, dt);
     }
 
     public void UpdateJump(bool m_playerAttemptedJump)
@@ -80,7 +80,7 @@ namespace CasinoRoyale.GameObjects
         }
 
         // Check if player has landed after falling (end jump state)
-        if (InJump && Velocity.Y >= 0 && CasinoRoyale.GameObjects.PhysicsSystem.Instance.IsPlayerGrounded(this)) InJump = false;
+        if (InJump && Velocity.Y >= 0 && CasinoRoyale.Classes.GameSystems.PhysicsSystem.Instance.IsPlayerGrounded(this)) InJump = false;
 
     }
 

@@ -1,8 +1,8 @@
 using Microsoft.Xna.Framework;
 using System;
-using CasinoRoyale.GameObjects.Interfaces;
+using CasinoRoyale.Classes.GameObjects.Interfaces;
 
-namespace CasinoRoyale.GameObjects
+namespace CasinoRoyale.Classes.GameObjects
 {
     public sealed class MainCamera
 {

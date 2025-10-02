@@ -1,10 +1,10 @@
 using System;
 using LiteNetLib.Utils;
 using Microsoft.Xna.Framework;
-using CasinoRoyale.GameObjects.Interfaces;
-using CasinoRoyale.Networking;
+using CasinoRoyale.Classes.GameObjects.Interfaces;
+using CasinoRoyale.Classes.Networking;
 
-namespace CasinoRoyale.GameObjects
+namespace CasinoRoyale.Classes.GameObjects
 {
     public class GameEntity : IObject, IHitbox, IMovement
 {

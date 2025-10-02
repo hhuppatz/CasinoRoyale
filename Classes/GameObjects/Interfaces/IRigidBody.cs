@@ -1,6 +1,6 @@
 using Microsoft.Xna.Framework;
 
-namespace CasinoRoyale.GameObjects.Interfaces
+namespace CasinoRoyale.Classes.GameObjects.Interfaces
 {
     // Taking inspiration of Verlet integration scheme and iterative methods
     // from "Advanced Character Physics" by Thomas Jakobsen of IO Interactive

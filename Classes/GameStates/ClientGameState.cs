@@ -4,12 +4,13 @@ using LiteNetLib;
 using LiteNetLib.Utils;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
-using CasinoRoyale.GameObjects;
-using CasinoRoyale.MonogameMethodExtensions;
-using CasinoRoyale.Networking;
+using CasinoRoyale.Classes.GameObjects;
+using CasinoRoyale.Classes.MonogameMethodExtensions;
+using CasinoRoyale.Classes.Networking;
 using CasinoRoyale.Utils;
+using CasinoRoyale.Classes.GameSystems;
 
-namespace CasinoRoyale.GameStates
+namespace CasinoRoyale.Classes.GameStates
 {
     /// <summary>
     /// Game state for joining a game as a client
@@ -84,11 +85,8 @@ namespace CasinoRoyale.GameStates
         {
             try
             {
-                Logger.Info("ClientGameState.LoadContent() starting...");
-                
                 base.LoadContent();
-                Logger.Info("Base LoadContent() completed");
-                
+
                 // Load player texture using GameWorld
                 if (GameWorld == null)
                 {
@@ -96,29 +94,22 @@ namespace CasinoRoyale.GameStates
                     return;
                 }
                 
-                PlayerTexture = GameWorld.LoadPlayerTexture(Content);
-                Logger.Info("Player texture loaded");
+                string playerImageName = GameProperties.get("player.image", "ball");
+                Logger.Info($"Loading player texture: {playerImageName}");
+                PlayerTexture = Content.Load<Texture2D>(playerImageName);
                 
-                // Generate game world (same as Host - client will receive updates from host)
-                GenerateGameWorld();
-                Logger.Info("Game world generated");
+                // Initialize game world
+                if (PlayerOrigin == Vector2.Zero)
+                {
+                    // Set default player origin if not already set
+                    PlayerOrigin = new Vector2(100, 100);
+                }
+                GameWorld.InitializeGameWorld(Content, PlayerOrigin);
                 
-                // Create local player (same as Host)
+                // Create local player
                 CreateLocalPlayer();
-                Logger.Info("Local player created");
-                
-                // Debug: Print player hitbox info (same as Host)
-                Logger.Info($"Player texture dimensions: {PlayerTexture.Width}x{PlayerTexture.Height}");
-                Logger.Info($"Player {LocalPlayer.GetID()} {LocalPlayer.GetUsername()} created at {LocalPlayer.Coords}");
-                
-                // Initialize physics and camera (same as Host)
-                GameWorld.InitPhysics();
-                Logger.Info("Physics initialized");
                 
                 InitializeCamera();
-                Logger.Info("Camera initialized");
-                
-                Logger.Info("ClientGameState.LoadContent() completed successfully!");
             }
             catch (Exception ex)
             {
@@ -155,9 +146,6 @@ namespace CasinoRoyale.GameStates
                 otherPlayer.ProcessBufferedStates(deltaTime);
                 otherPlayer.UpdateInterpolation(deltaTime);
             }
-            
-            // Check for player collisions (same as Host)
-            CheckPlayerCollisions();
             
             // Send player state to host
             SendPlayerState(deltaTime);
@@ -228,7 +216,35 @@ namespace CasinoRoyale.GameStates
                 SpriteBatch.DrawEntity(MainCamera, player);
             }
         }
+
+        private void CreateLocalPlayer()
+        {
+            if (PlayerTexture == null)
+            {
+                Logger.Error("PlayerTexture is null in CreateLocalPlayer()!");
+                return;
+            }
+            
+            LocalPlayer = new PlayableCharacter(
+                playerIDs.GetNextID(),
+                username,
+                PlayerTexture,
+                PlayerOrigin,
+                Vector2.Zero,
+                GetFloatProperty("playerMass", 5.0f),
+                GetFloatProperty("playerInitialJumpVelocity", 240f),
+                GetFloatProperty("playerRunSpeed", 240f),
+                new Rectangle(PlayerOrigin.ToPoint(), new Point(PlayerTexture.Bounds.Width, PlayerTexture.Bounds.Height)),
+                true);
+            
+            // Initialize interpolation targets
+            LocalPlayer.InitializeTargets();
+            
+            Logger.Info($"Player {LocalPlayer.GetID()} {LocalPlayer.GetUsername()} created at {LocalPlayer.Coords}");
+        }
         
+        // Network methods //
+
         private async void JoinGame()
         {
             try
@@ -280,6 +296,12 @@ namespace CasinoRoyale.GameStates
                 var otherPlayer = otherPlayers.Find(p => p.GetID() == playerState.pid);
                 if (otherPlayer == null)
                 {
+                    if (PlayerTexture == null)
+                    {
+                        Logger.Error("PlayerTexture is null when creating other player!");
+                        continue;
+                    }
+                    
                     // Create new player using the player state data
                     otherPlayer = new PlayableCharacter(
                         playerState.pid,
@@ -307,13 +329,17 @@ namespace CasinoRoyale.GameStates
             }
             
             // Update casino machines
-            if (update.casinoMachineStates != null)
+            if (update.casinoMachineStates != null && GameWorld?.WorldObjects?.CasinoMachines != null)
             {
                 foreach (var casinoMachineState in update.casinoMachineStates)
                 {
                     if (casinoMachineState.machineNum < GameWorld.WorldObjects.CasinoMachines.Count)
                     {
-                        GameWorld.WorldObjects.CasinoMachines[(int)casinoMachineState.machineNum].Coords = casinoMachineState.coords;
+                        var machine = GameWorld.WorldObjects.CasinoMachines[(int)casinoMachineState.machineNum];
+                        if (machine != null)
+                        {
+                            machine.Coords = casinoMachineState.coords;
+                        }
                     }
                 }
             }
@@ -323,14 +349,10 @@ namespace CasinoRoyale.GameStates
         {
             Logger.Info($"========== OnJoinAcceptReceived called! Platforms: {joinAccept.platformStates?.Length}, Peer: {(peer == null ? "null (relay)" : peer.Address.ToString())} ==========");
             
-            // Set up game world (same as original Client)
-            GameWorld.SetGameArea(joinAccept.gameArea);
+            // Set up game world
+            GameWorld.InitializeGameWorld(Content, PlayerOrigin, joinAccept.gameArea);
             
-            // Initialize physics system BEFORE creating player (same as original Client)
-            GameWorld.InitPhysics();
-            Logger.Info($"Physics system initialized with gameArea: {GameWorld.GameArea}");
-            
-            // Create local player from player state (same as original Client)
+            // Create local player from player state
             var playerState = joinAccept.playerState;
             LocalPlayer = new PlayableCharacter(
                 playerState.pid,
@@ -342,9 +364,12 @@ namespace CasinoRoyale.GameStates
                 playerState.initialJumpVelocity,
                 playerState.maxRunSpeed,
                 joinAccept.playerHitbox,
-                true);
+                true
+            );
+
+            PlayerOrigin = playerState.ges.coords;
             
-            // Initialize camera AFTER creating player (same as original Client)
+            // Initialize camera AFTER creating player
             InitializeCamera();
             Logger.Info("Player created and camera initialized!");
             
@@ -354,7 +379,7 @@ namespace CasinoRoyale.GameStates
             // Recreate casino machines from casino machine states using GameWorld
             GameWorld.WorldObjects.RecreateCasinoMachinesFromStates(Content, joinAccept.casinoMachineStates);
             
-            // Create other players from other player states (same as original Client)
+            // Create other players from other player states
             foreach (var otherPlayerState in joinAccept.otherPlayerStates ?? [])
             {
                 if (otherPlayerState.pid != LocalPlayer.GetID())
@@ -460,53 +485,6 @@ namespace CasinoRoyale.GameStates
         {
             base.Dispose();
             relayManager?.Dispose();
-        }
-        
-        private void GenerateGameWorld()
-        {
-            // Load game area properties using GameWorld
-            GameWorld.LoadGameArea();
-            
-            // Calculate player spawn buffer using GameWorld
-            PlayerOrigin = GameWorld.CalculatePlayerOrigin(PlayerTexture.Height);
-            
-            Logger.Debug($"Player spawn: gameArea={GameWorld.GameArea}, playerSpawnBuffer={PlayerTexture.Height * 2}, playerOrigin={PlayerOrigin}");
-            
-            // Generate game world using GameWorld
-            GameWorld.GenerateGameWorld(Content, PlayerOrigin);
-        }
-        
-        private void CreateLocalPlayer()
-        {
-            LocalPlayer = new PlayableCharacter(
-                playerIDs.GetNextID(),
-                username,
-                PlayerTexture,
-                PlayerOrigin,
-                Vector2.Zero,
-                GetFloatProperty("playerMass", 5.0f),
-                GetFloatProperty("playerInitialJumpVelocity", 240f),
-                GetFloatProperty("playerRunSpeed", 240f),
-                new Rectangle(PlayerOrigin.ToPoint(), new Point(PlayerTexture.Bounds.Width, PlayerTexture.Bounds.Height)),
-                true);
-            
-            // Initialize interpolation targets
-            LocalPlayer.InitializeTargets();
-            
-            Logger.Info($"Player {LocalPlayer.GetID()} {LocalPlayer.GetUsername()} created at {LocalPlayer.Coords}");
-        }
-        
-        private void CheckPlayerCollisions()
-        {
-            if (LocalPlayer == null) return;
-            
-            foreach (var player in otherPlayers)
-            {
-                if (player.Hitbox.Intersects(LocalPlayer.Hitbox))
-                {
-                    Logger.LogCollision(LocalPlayer.GetID(), "player collision", $"with player {player.GetID()}");
-                }
-            }
         }
         
         // INetEventListener implementation

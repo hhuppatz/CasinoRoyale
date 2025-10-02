@@ -1,4 +1,4 @@
-namespace CasinoRoyale.GameStates
+namespace CasinoRoyale.Classes.GameStates
 {
     /// <summary>
     /// Interface for managing game state transitions

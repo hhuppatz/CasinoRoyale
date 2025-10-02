@@ -1,4 +1,4 @@
-namespace CasinoRoyale.GameObjects.Interfaces
+namespace CasinoRoyale.Classes.GameObjects.Interfaces
 {
     public interface IJump
 {

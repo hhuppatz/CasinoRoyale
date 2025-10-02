@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 
-namespace CasinoRoyale.Networking
+namespace CasinoRoyale.Classes.Networking
 {
     public class PlayerIDs
     {

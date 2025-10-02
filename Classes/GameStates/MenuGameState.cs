@@ -4,7 +4,7 @@ using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using CasinoRoyale.Utils;
 
-namespace CasinoRoyale.GameStates
+namespace CasinoRoyale.Classes.GameStates
 {
     /// <summary>
     /// Game state for the main menu

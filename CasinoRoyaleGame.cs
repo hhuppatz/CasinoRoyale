@@ -1,7 +1,7 @@
 using System;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
-using CasinoRoyale.GameStates;
+using CasinoRoyale.Classes.GameStates;
 using CasinoRoyale.Utils;
 
 namespace CasinoRoyale

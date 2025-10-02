@@ -3,11 +3,11 @@ using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using Microsoft.Xna.Framework.Content;
-using CasinoRoyale.GameObjects;
-using CasinoRoyale.MonogameMethodExtensions;
+using CasinoRoyale.Classes.GameObjects;
+using CasinoRoyale.Classes.MonogameMethodExtensions;
 using CasinoRoyale.Utils;
 
-namespace CasinoRoyale.GameStates
+namespace CasinoRoyale.Classes.GameStates
 {
     /// <summary>
     /// Base class for all game states (Menu, Host, Client)

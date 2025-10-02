@@ -2,15 +2,13 @@ using System.Collections.Generic;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Content;
-using CasinoRoyale.GameObjects;
-using CasinoRoyale.Networking;
+using CasinoRoyale.Classes.GameObjects;
+using CasinoRoyale.Classes.Networking;
 using CasinoRoyale.Utils;
 
-namespace CasinoRoyale.GameObjects
+namespace CasinoRoyale.Classes.GameObjects
 {
-    /// <summary>
-    /// Manages game world objects (platforms and casino machines) for both Host and Client
-    /// </summary>
+    // Manages game world objects (platforms and casino machines) for both Host and Client
     public class GameWorldObjects
     {
         public List<Platform> Platforms { get; private set; } = new();
@@ -24,9 +22,7 @@ namespace CasinoRoyale.GameObjects
             gameProperties = properties;
         }
         
-        /// <summary>
-        /// Generates the complete game world with platforms and casino machines
-        /// </summary>
+        // Generates the complete game world with platforms and casino machines
         public void GenerateGameWorld(ContentManager content, Rectangle gameArea, Vector2 playerOrigin)
         {
             // Generate platforms
@@ -36,9 +32,8 @@ namespace CasinoRoyale.GameObjects
             GenerateCasinoMachines(content);
         }
         
-        /// <summary>
-        /// Generates platforms using the same logic as HostGameState
-        /// </summary>
+        // Generates platforms using the same logic as HostGameState
+
         private void GeneratePlatforms(ContentManager content, Rectangle gameArea, Vector2 playerOrigin)
         {
             // Calculate player spawn buffer - this should be the height of the bottom safe zone
@@ -53,23 +48,12 @@ namespace CasinoRoyale.GameObjects
                 200,   // maxLen (maximum platform width)
                 50,    // horizontalDistApart
                 100,   // verticalDistApart
-                70,    // platSpawnChance (70% chance to spawn)
-                playerSpawnBuffer);
-            
-            // Debug: Print platform hitboxes (first 3 only)
-            var platformTexture = content.Load<Texture2D>(gameProperties.get("casinoFloor.image.1", "CasinoFloor1"));
-            Logger.Info($"Platform texture dimensions: {platformTexture.Width}x{platformTexture.Height}");
-            Logger.Info($"Generated {Platforms.Count} platforms");
-            for (int i = 0; i < System.Math.Min(3, Platforms.Count); i++)
-            {
-                var platform = Platforms[i];
-                Logger.Debug($"Platform {i}: Hitbox={platform.Hitbox}, Coords={platform.GetCoords()}");
-            }
+                60,    // platSpawnChance (60% chance to spawn)
+                playerSpawnBuffer
+            );
         }
         
-        /// <summary>
-        /// Generates casino machines using CasinoMachineFactory
-        /// </summary>
+        // Generates casino machines using CasinoMachineFactory
         private void GenerateCasinoMachines(ContentManager content)
         {
             // Initialize casino machine factory
@@ -78,23 +62,13 @@ namespace CasinoRoyale.GameObjects
             
             // Generate casino machines
             CasinoMachines = casinoMachineFactory.SpawnCasinoMachines();
-            
-            // Debug: Log casino machine positions (first 3 only)
-            Logger.Info($"Spawned {CasinoMachines.Count} casino machines");
-            for (int i = 0; i < System.Math.Min(3, CasinoMachines.Count); i++)
-            {
-                var machine = CasinoMachines[i];
-                Logger.Debug($"Casino machine {i}: Coords={machine.Coords}, Hitbox={machine.Hitbox}");
-            }
         }
         
-        /// <summary>
-        /// Recreates platforms from platform states (used by Client when receiving world data)
-        /// </summary>
+        // Recreates platforms from platform states (used by Client when receiving world data)
         public void RecreatePlatformsFromStates(ContentManager content, PlatformState[] platformStates)
         {
-            Platforms = new List<Platform>();
-            foreach (var platformState in platformStates ?? new PlatformState[0])
+            Platforms = [];
+            foreach (var platformState in platformStates ?? [])
             {
                 var platform = new Platform(
                     platformState.platNum,
@@ -105,13 +79,11 @@ namespace CasinoRoyale.GameObjects
             }
         }
         
-        /// <summary>
-        /// Recreates casino machines from casino machine states (used by Client when receiving world data)
-        /// </summary>
+        // Recreates casino machines from casino machine states (used by Client when receiving world data)
         public void RecreateCasinoMachinesFromStates(ContentManager content, CasinoMachineState[] casinoMachineStates)
         {
-            CasinoMachines = new List<CasinoMachine>();
-            foreach (var casinoMachineState in casinoMachineStates ?? new CasinoMachineState[0])
+            CasinoMachines = [];
+            foreach (var casinoMachineState in casinoMachineStates ?? [])
             {
                 var casinoMachine = new CasinoMachine(
                     casinoMachineState.machineNum,
@@ -121,9 +93,7 @@ namespace CasinoRoyale.GameObjects
             }
         }
         
-        /// <summary>
-        /// Draws all platforms using the provided SpriteBatch and camera
-        /// </summary>
+        // Draws all platforms using the provided SpriteBatch and camera
         public void DrawPlatforms(SpriteBatch spriteBatch, MainCamera camera, Vector2 ratio)
         {
             foreach (var platform in Platforms)
@@ -148,9 +118,7 @@ namespace CasinoRoyale.GameObjects
             }
         }
         
-        /// <summary>
-        /// Draws all casino machines using the provided SpriteBatch and camera
-        /// </summary>
+        // Draws all casino machines using the provided SpriteBatch and camera
         public void DrawCasinoMachines(SpriteBatch spriteBatch, MainCamera camera, Vector2 ratio)
         {
             foreach (var casinoMachine in CasinoMachines)
@@ -164,9 +132,7 @@ namespace CasinoRoyale.GameObjects
             }
         }
         
-        /// <summary>
-        /// Gets platform states for networking (used by Host to send to Client)
-        /// </summary>
+        // Gets platform states for networking (used by Host to send to Client)
         public PlatformState[] GetPlatformStates()
         {
             var platformStates = new PlatformState[Platforms.Count];
@@ -177,9 +143,7 @@ namespace CasinoRoyale.GameObjects
             return platformStates;
         }
         
-        /// <summary>
-        /// Gets casino machine states for networking (used by Host to send to Client)
-        /// </summary>
+        // Gets casino machine states for networking (used by Host to send to Client)
         public CasinoMachineState[] GetCasinoMachineStates()
         {
             var casinoMachineStates = new CasinoMachineState[CasinoMachines.Count];
@@ -190,9 +154,7 @@ namespace CasinoRoyale.GameObjects
             return casinoMachineStates;
         }
         
-        /// <summary>
-        /// Checks if a rectangle intersects with any platform (for collision detection)
-        /// </summary>
+        // Checks if a rectangle intersects with any platform (for collision detection)
         public bool CheckPlatformCollision(Rectangle hitbox)
         {
             foreach (var platform in Platforms)
@@ -205,9 +167,7 @@ namespace CasinoRoyale.GameObjects
             return false;
         }
         
-        /// <summary>
-        /// Checks if a rectangle intersects with any casino machine (for collision detection)
-        /// </summary>
+        // Checks if a rectangle intersects with any casino machine (for collision detection)
         public bool CheckCasinoMachineCollision(Rectangle hitbox)
         {
             foreach (var casinoMachine in CasinoMachines)

@@ -1,8 +1,8 @@
 using LiteNetLib.Utils;
 using Microsoft.Xna.Framework;
-using CasinoRoyale.GameObjects;
+using CasinoRoyale.Classes.GameObjects;
 
-namespace CasinoRoyale.Networking
+namespace CasinoRoyale.Classes.Networking
 {
     public static class SerializingExtensions
 {
