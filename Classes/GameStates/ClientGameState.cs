@@ -42,7 +42,7 @@ namespace CasinoRoyale.Classes.GameStates
             base.Initialize();
             
             // Initialize GameWorld
-            GameWorld = new GameWorld(GameProperties);
+            GameWorld = new GameWorld(GameProperties, Content);
             
             // Initialize relay manager (using LiteNetLib relay)
             string relayAddress = GetStringProperty("relay.server.address", "127.0.0.1");
@@ -98,12 +98,6 @@ namespace CasinoRoyale.Classes.GameStates
                 Logger.Info($"Loading player texture: {playerImageName}");
                 PlayerTexture = Content.Load<Texture2D>(playerImageName);
                 
-                // Initialize game world
-                if (PlayerOrigin == Vector2.Zero)
-                {
-                    // Set default player origin if not already set
-                    PlayerOrigin = new Vector2(100, 100);
-                }
                 GameWorld.InitializeGameWorld(Content, PlayerOrigin);
                 
                 // Create local player
@@ -233,7 +227,7 @@ namespace CasinoRoyale.Classes.GameStates
                 Vector2.Zero,
                 GetFloatProperty("playerMass", 5.0f),
                 GetFloatProperty("playerInitialJumpVelocity", 240f),
-                GetFloatProperty("playerRunSpeed", 240f),
+                GetFloatProperty("playerStandardSpeed", 240f),
                 new Rectangle(PlayerOrigin.ToPoint(), new Point(PlayerTexture.Bounds.Width, PlayerTexture.Bounds.Height)),
                 true);
             
@@ -419,7 +413,7 @@ namespace CasinoRoyale.Classes.GameStates
                 packet.new_player_state.ges.velocity,
                 packet.new_player_mass,
                 packet.new_player_initialJumpVelocity,
-                packet.new_player_maxRunSpeed,
+                packet.new_player_standardSpeed,
                 packet.new_player_hitbox,
                 true));
         }
@@ -509,7 +503,7 @@ namespace CasinoRoyale.Classes.GameStates
                 username = username,
                 playerMass = GetFloatProperty("playerMass", 5.0f),
                 playerInitialJumpVelocity = GetFloatProperty("playerInitialJumpVelocity", 240f),
-                playerMaxRunSpeed = GetFloatProperty("playerRunSpeed", 240f)
+                playerStandardSpeed = GetFloatProperty("playerStandardSpeed", 240f)
             }, DeliveryMethod.ReliableOrdered);
         }
         

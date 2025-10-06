@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <PipelineBuildEvent xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
-  <SourceFile>c:/Users/harry/Personal Projects/CasinoRoyaleServer/Content/CasinoFloor1.png</SourceFile>
-  <SourceTime>2025-01-04T13:51:07.4345781+11:00</SourceTime>
-  <DestFile>c:/Users/harry/Personal Projects/CasinoRoyaleServer/Content/bin/DesktopGL/CasinoFloor1.xnb</DestFile>
-  <DestTime>2025-10-03T13:29:04.522862+10:00</DestTime>
+  <SourceFile>C:/Users/harry/Personal Projects/CasinoRoyaleServer/Content/Coin.png</SourceFile>
+  <SourceTime>2025-10-03T13:27:24.442014+10:00</SourceTime>
+  <DestFile>C:/Users/harry/Personal Projects/CasinoRoyaleServer/Content/bin/DesktopGL/Content/Coin.xnb</DestFile>
+  <DestTime>2025-10-06T10:40:39.3325122+11:00</DestTime>
   <Importer>TextureImporter</Importer>
   <ImporterTime>2024-08-17T03:05:56+10:00</ImporterTime>
   <Processor>TextureProcessor</Processor>

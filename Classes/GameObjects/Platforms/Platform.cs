@@ -24,9 +24,9 @@ namespace CasinoRoyale.Classes.GameObjects.Platforms
         this.TL = TL;
         this.BR = BR;
         
-        // Create hitbox using full texture dimensions
+        // Create hitbox using full width but minimal height for collision detection
         int platformWidth = BR.ToPoint().X - TL.ToPoint().X;
-        int platformHeight = tex.Height;
+        int platformHeight = 2; // Use minimal height to avoid player hitbox overlap
         
         Hitbox = new Rectangle(TL.ToPoint().X, TL.ToPoint().Y, platformWidth, platformHeight);
         MovementEvent += UpdateHitbox;
@@ -93,12 +93,14 @@ namespace CasinoRoyale.Classes.GameObjects.Platforms
 
     private void UpdateRCoords(object s, PlatformMovementEventArgs e)
     {
-        BR = new Vector2(e.coords.X + e.length, e.coords.Y);
+        BR = new Vector2(e.coords.X + e.length, e.coords.Y + tex.Height);
     }
 
     private void UpdateHitbox(object s, PlatformMovementEventArgs e)
     {
-        Hitbox = new Rectangle(e.coords.ToPoint(), Hitbox.Size);
+        int platformWidth = BR.ToPoint().X - TL.ToPoint().X;
+        int platformHeight = 2; // Use minimal height to avoid player hitbox overlap
+        Hitbox = new Rectangle(e.coords.ToPoint().X, e.coords.ToPoint().Y, platformWidth, platformHeight);
     }
 
     // Platforms are static by default

@@ -9,27 +9,23 @@ using CasinoRoyale.Classes.GameObjects.Platforms;
 namespace CasinoRoyale.Classes.GameObjects
 {
     // Manages game world objects (platforms and casino machines) for both Host and Client
-    public class GameWorldObjects
+    public class GameWorldObjects(Properties properties, ContentManager content)
     {
-        public List<Platform> Platforms { get; private set; } = new();
-        public List<CasinoMachine> CasinoMachines { get; private set; } = new();
+        public List<Platform> Platforms { get; private set; } = [];
+        public List<CasinoMachine> CasinoMachines { get; private set; } = [];
         
-        private CasinoMachineFactory casinoMachineFactory;
-        private Properties gameProperties;
-        
-        public GameWorldObjects(Properties properties)
-        {
-            gameProperties = properties;
-        }
-        
+        private readonly CasinoMachineFactory casinoMachineFactory = new(content.Load<Texture2D>(properties.get("casinoMachine.image.1", "CasinoMachine1")));
+        private readonly Properties gameProperties = properties;
+
         // Generates the complete game world with platforms and casino machines
+
         public void GenerateGameWorld(ContentManager content, Rectangle gameArea, Vector2 playerOrigin)
         {
             // Generate platforms
             GeneratePlatforms(content, gameArea, playerOrigin);
             
             // Generate casino machines
-            GenerateCasinoMachines(content);
+            GenerateCasinoMachines();
         }
         
         // Generates platforms using the same logic as HostGameState
@@ -38,15 +34,17 @@ namespace CasinoRoyale.Classes.GameObjects
         {
             // Calculate player spawn buffer - this should be the height of the bottom safe zone
             // where we don't want to spawn platforms (to keep area around player clear)
-            int playerSpawnBuffer = 90; // Fixed value for bottom buffer zone
+            // Use the same calculation as GameWorld.CalculatePlayerOrigin: playerTextureHeight
+            int playerTextureHeight = 64; // ball.png texture height
+            int playerSpawnBuffer = (int)(playerTextureHeight * 1.3f); // 64 pixels - matches player spawn position
             
             // Generate platforms using PlatformLayout
             Platforms = PlatformLayout.GenerateStandardRandPlatLayout(
                 content.Load<Texture2D>(gameProperties.get("casinoFloor.image.1", "CasinoFloor1")),
                 gameArea,
-                50,    // minLen (minimum platform width)
-                200,   // maxLen (maximum platform width)
-                50,    // horizontalDistApart
+                64,    // minLen (minimum platform width)
+                6,   // maxLengthMultiple (dictates maximum platform width)
+                128,    // horizontalDistApart
                 100,   // verticalDistApart
                 60,    // platSpawnChance (60% chance to spawn)
                 playerSpawnBuffer
@@ -54,12 +52,8 @@ namespace CasinoRoyale.Classes.GameObjects
         }
         
         // Generates casino machines using CasinoMachineFactory
-        private void GenerateCasinoMachines(ContentManager content)
+        private void GenerateCasinoMachines()
         {
-            // Initialize casino machine factory
-            var casinoMachineTexture = content.Load<Texture2D>(gameProperties.get("casinoMachine.image.1", "CasinoMachine1"));
-            casinoMachineFactory = new CasinoMachineFactory(casinoMachineTexture);
-            
             // Generate casino machines
             CasinoMachines = casinoMachineFactory.SpawnCasinoMachines();
         }

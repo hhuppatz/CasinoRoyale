@@ -12,14 +12,14 @@ namespace CasinoRoyale.Classes.Networking
         public string username { get; set; }
         public float playerMass { get; set; }
         public float playerInitialJumpVelocity { get; set; }
-        public float playerMaxRunSpeed { get; set; }
+        public float playerStandardSpeed { get; set; }
 
         public void Serialize(NetDataWriter writer)
         {
             writer.Put(username);
             writer.Put(playerMass);
             writer.Put(playerInitialJumpVelocity);
-            writer.Put(playerMaxRunSpeed);
+            writer.Put(playerStandardSpeed);
         }
         
         public void Deserialize(NetDataReader reader)
@@ -27,7 +27,7 @@ namespace CasinoRoyale.Classes.Networking
             username = reader.GetString();
             playerMass = reader.GetFloat();
             playerInitialJumpVelocity = reader.GetFloat();
-            playerMaxRunSpeed = reader.GetFloat();
+            playerStandardSpeed = reader.GetFloat();
         }
     }
 
@@ -144,7 +144,7 @@ public class PlayerJoinedGamePacket : INetSerializable {
     public Rectangle new_player_hitbox { get; set; }
     public float new_player_mass { get; set; }
     public float new_player_initialJumpVelocity { get; set; }
-    public float new_player_maxRunSpeed { get; set; }
+    public float new_player_standardSpeed { get; set; }
 
     public void Serialize(NetDataWriter writer)
     {
@@ -153,7 +153,7 @@ public class PlayerJoinedGamePacket : INetSerializable {
         writer.Put(new_player_hitbox);
         writer.Put(new_player_mass);
         writer.Put(new_player_initialJumpVelocity);
-        writer.Put(new_player_maxRunSpeed);
+        writer.Put(new_player_standardSpeed);
     }
     
     public void Deserialize(NetDataReader reader)
@@ -163,7 +163,7 @@ public class PlayerJoinedGamePacket : INetSerializable {
         new_player_hitbox = reader.GetRectangle();
         new_player_mass = reader.GetFloat();
         new_player_initialJumpVelocity = reader.GetFloat();
-        new_player_maxRunSpeed = reader.GetFloat();
+        new_player_standardSpeed = reader.GetFloat();
     }
 }
 

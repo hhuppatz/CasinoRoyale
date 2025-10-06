@@ -4,11 +4,15 @@
   <Platform>DesktopGL</Platform>
   <Config />
   <SourceFiles>
+    <File>c:/Users/harry/Personal Projects/CasinoRoyaleServer/Content/Arial.spritefont</File>
     <File>c:/Users/harry/Personal Projects/CasinoRoyaleServer/Content/ball.png</File>
     <File>c:/Users/harry/Personal Projects/CasinoRoyaleServer/Content/CasinoFloor1.png</File>
     <File>c:/Users/harry/Personal Projects/CasinoRoyaleServer/Content/CasinoMachine1.png</File>
+    <File>c:/Users/harry/Personal Projects/CasinoRoyaleServer/Content/Coin.png</File>
   </SourceFiles>
   <DestFiles>
+    <File xsi:nil="true" />
+    <File xsi:nil="true" />
     <File xsi:nil="true" />
     <File xsi:nil="true" />
     <File xsi:nil="true" />

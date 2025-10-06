@@ -9,9 +9,9 @@ namespace CasinoRoyale.Classes.GameObjects.Platforms
     private readonly Texture2D platTex = platTex;
     private readonly Random rand = new();
 
-    public Platform GeneratePlatform(uint platNum, Vector2 topLeft, int minLen, int maxLen)
+    public Platform GeneratePlatform(uint platNum, Vector2 topLeft, int minLen, int maxLengthMultiple = 3)
     {
-        int platformWidth = (int)(rand.NextDouble() * (maxLen - minLen)) + minLen;
+        int platformWidth = ((int)(rand.NextDouble() * maxLengthMultiple)) * minLen;
         Vector2 botRight = new(topLeft.X + platformWidth, topLeft.Y + platTex.Height);
 
         return new Platform(platNum, platTex, topLeft, botRight);

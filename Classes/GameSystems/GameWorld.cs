@@ -6,12 +6,13 @@ using CasinoRoyale.Utils;
 
 namespace CasinoRoyale.Classes.GameSystems
 {
-    public class GameWorld(Properties properties)
+    public class GameWorld(Properties properties, ContentManager content)
     {
         public Rectangle GameArea { get; private set; }
-        public GameWorldObjects WorldObjects { get; private set; } = new GameWorldObjects(properties);
+        public GameWorldObjects WorldObjects { get; private set; } = new GameWorldObjects(properties, content);
 
         private readonly Properties gameProperties = properties;
+        private readonly ContentManager gameContent = content;
 
         public void InitializeGameWorld(ContentManager content, Vector2 playerOrigin, Rectangle gameArea = default)
         {
@@ -85,8 +86,8 @@ namespace CasinoRoyale.Classes.GameSystems
                 return Vector2.Zero;
             }
             
-            int playerSpawnBuffer = playerTextureHeight * 2; // Keep area directly around player free
-            return new Vector2(0, GameArea.Y + GameArea.Height - playerSpawnBuffer);
+            // Player spawns at the exact bottom of the world
+            return new Vector2(0, GameArea.Y + GameArea.Height - playerTextureHeight);
         }
     }
 }

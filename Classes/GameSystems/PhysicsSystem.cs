@@ -77,6 +77,9 @@ public class PhysicsSystem
             {
                 // Player was moving downward and hit ground/platform from above - stop downward velocity
                 player.Velocity = new Vector2(player.Velocity.X, 0);
+                
+                // Ensure player is positioned above any platform they landed on
+                EnsurePlayerAbovePlatforms(gameWorldObjects, player);
             }
         }
         
@@ -275,7 +278,7 @@ public class PhysicsSystem
             player.Hitbox.X,
             player.Hitbox.Y + player.Hitbox.Height,
             player.Hitbox.Width,
-            2
+            8  // Increased from 2 to 8 pixels for more reliable ground detection
         );
         
         // Check if player is grounded on a platform
@@ -288,6 +291,21 @@ public class PhysicsSystem
         }
         
         return false;
+    }
+    
+    private static void EnsurePlayerAbovePlatforms(GameWorldObjects gameWorldObjects, PlayableCharacter player)
+    {
+        // Check all platforms and ensure player is positioned above any that they intersect with
+        foreach (var platform in gameWorldObjects.Platforms)
+        {
+            if (player.Hitbox.Intersects(platform.Hitbox))
+            {
+                // Player is overlapping with platform - push them above it
+                float newY = platform.Hitbox.Y - player.Hitbox.Height - 1; // 1 pixel gap
+                player.Coords = new Vector2(player.Coords.X, newY);
+                break; // Only adjust for the first overlapping platform
+            }
+        }
     }
     
 }

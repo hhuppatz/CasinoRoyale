@@ -49,7 +49,7 @@ namespace CasinoRoyale.Classes.GameStates
             base.Initialize();
             
             // Initialize GameWorld
-            GameWorld = new GameWorld(GameProperties);
+            GameWorld = new GameWorld(GameProperties, Content);
             
             // Initialize relay manager (using LiteNetLib relay)
             string relayAddress = GetStringProperty("relay.server.address", "127.0.0.1");
@@ -78,7 +78,7 @@ namespace CasinoRoyale.Classes.GameStates
             relayManager.OnLobbyCodeReceived += (lobbyCode) =>
             {
                 currentLobbyCode = lobbyCode;
-                Logger.Info($"🎮 LOBBY CODE: {lobbyCode}");
+                Logger.Info($"LOBBY CODE: {lobbyCode}");
                 Logger.Info("Share this code with other players to join your game!");
             };
 
@@ -121,12 +121,6 @@ namespace CasinoRoyale.Classes.GameStates
                 Logger.Info($"Loading player texture: {playerImageName}");
                 PlayerTexture = Content.Load<Texture2D>(playerImageName);
 
-                // Initialize game world
-                if (PlayerOrigin == Vector2.Zero)
-                {
-                    // Set default player origin if not already set
-                    PlayerOrigin = new Vector2(100, 100);
-                }
                 GameWorld.InitializeGameWorld(Content, PlayerOrigin);
                 
                 // Calculate player spawn buffer using GameWorld
@@ -134,8 +128,6 @@ namespace CasinoRoyale.Classes.GameStates
                 {
                     PlayerOrigin = GameWorld.CalculatePlayerOrigin(PlayerTexture.Height);
                 }
-                
-                Logger.Debug($"Player spawn: gameArea={GameWorld.GameArea}, playerSpawnBuffer={PlayerTexture.Height * 2}, playerOrigin={PlayerOrigin}");
                 
                 // Create local player using texture and origin
                 CreateLocalPlayer();
@@ -291,7 +283,7 @@ namespace CasinoRoyale.Classes.GameStates
                 Vector2.Zero,
                 GetFloatProperty("playerMass", 5.0f),
                 GetFloatProperty("playerInitialJumpVelocity", 240f),
-                GetFloatProperty("playerRunSpeed", 240f),
+                GetFloatProperty("playerStandardSpeed", 240f),
                 new Rectangle(PlayerOrigin.ToPoint(), new Point(PlayerTexture.Bounds.Width, PlayerTexture.Bounds.Height)),
                 true);
             
@@ -421,7 +413,7 @@ namespace CasinoRoyale.Classes.GameStates
                 Vector2.Zero,
                 joinPacket.playerMass,
                 joinPacket.playerInitialJumpVelocity,
-                joinPacket.playerMaxRunSpeed,
+                joinPacket.playerStandardSpeed,
                 new Rectangle(spawnPosition.ToPoint(), new Point(PlayerTexture.Bounds.Width, PlayerTexture.Bounds.Height)),
                 false);
             
@@ -468,7 +460,7 @@ namespace CasinoRoyale.Classes.GameStates
                         new_player_hitbox = newPlayer.Hitbox,
                         new_player_mass = joinPacket.playerMass,
                         new_player_initialJumpVelocity = joinPacket.playerInitialJumpVelocity,
-                        new_player_maxRunSpeed = joinPacket.playerMaxRunSpeed
+                        new_player_standardSpeed = joinPacket.playerStandardSpeed
                     }, entry.Value.Peer, DeliveryMethod.ReliableOrdered);
                 }
             }

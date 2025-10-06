@@ -37,7 +37,7 @@ namespace CasinoRoyale.Classes.GameObjects
 
     private void UpdateHitbox(object s, EntityMovementEventArgs e)
     {
-        Hitbox = new Rectangle(e.coords.ToPoint(), Hitbox.Size);
+        Hitbox = new Rectangle((int)Math.Round(e.coords.X), (int)Math.Round(e.coords.Y), Hitbox.Width, Hitbox.Height);
     }
 
     public void AwakenEntity()

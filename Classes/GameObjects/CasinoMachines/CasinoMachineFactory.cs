@@ -4,22 +4,16 @@ using Microsoft.Xna.Framework.Graphics;
 
 namespace CasinoRoyale.Classes.GameObjects.CasinoMachines
 {
-    public class CasinoMachineFactory
-{
-    private readonly Texture2D machineTex;
-    public CasinoMachineFactory(Texture2D machineTex)
+    public class CasinoMachineFactory(Texture2D machineTex)
     {
-        this.machineTex = machineTex;
-    }
+    private readonly Texture2D machineTex = machineTex;
 
-    public List<CasinoMachine> SpawnCasinoMachines()
+        public List<CasinoMachine> SpawnCasinoMachines()
     {
         uint id = 0;
-        List<CasinoMachine> machines = new();
-        machines.Add(new CasinoMachine(id, machineTex, new Vector2(200,0)));
+        List<CasinoMachine> machines = [new CasinoMachine(id, machineTex, new Vector2(200,0))];
         id++;
         return machines;
     }
-
 }
 }

@@ -10,7 +10,7 @@ using CasinoRoyale.Classes.GameSystems;
 
 namespace CasinoRoyale.Classes.GameObjects
 {
-    public class PlayableCharacter(uint pid, string username, Texture2D tex, Vector2 coords, Vector2 velocity, float mass, float initialJumpVelocity, float maxRunSpeed, Rectangle hitbox, bool awake) : GameEntity(coords, velocity, hitbox, awake), CasinoRoyale.Classes.GameObjects.Interfaces.IDrawable
+    public class PlayableCharacter(uint pid, string username, Texture2D tex, Vector2 coords, Vector2 velocity, float mass, float initialJumpVelocity, float standardSpeed, Rectangle hitbox, bool awake) : GameEntity(coords, velocity, hitbox, awake), CasinoRoyale.Classes.GameObjects.Interfaces.IDrawable
 {
     private readonly uint pid = pid;
     private readonly string username = username;
@@ -21,18 +21,18 @@ namespace CasinoRoyale.Classes.GameObjects
     private float initialJumpVelocity = initialJumpVelocity;
     public float InitialJumpVelocity { get => initialJumpVelocity; set => initialJumpVelocity = value; }
 
-    private float maxRunSpeed = maxRunSpeed;
-    public float MaxRunSpeed { get => maxRunSpeed; set => maxRunSpeed = value; }
+    private float standardSpeed = standardSpeed;
+    public float StandardSpeed { get => standardSpeed; set => standardSpeed = value; }
 
     private bool inJump = false;
     public bool InJump { get => inJump; set => inJump = value; }
 
-    // Simple movement interpolation fields
+    // Movement interpolation fields for inbetween network updates
     private Vector2 targetCoords;
     private Vector2 targetVelocity;
-    private float interpolationSpeed = 8.0f; // How fast to interpolate to target position
+    private readonly float interpolationSpeed = 8.0f; // How fast to interpolate to target position
     
-    // State buffer for delayed interpolation
+    // State buffer for delayed interpolation for responsiveness
     private struct BufferedState
     {
         public Vector2 coords;
@@ -40,7 +40,7 @@ namespace CasinoRoyale.Classes.GameObjects
         public float timestamp;
     }
     
-    private readonly Queue<BufferedState> stateBuffer = new();
+    private readonly Queue<BufferedState> stateBuffer = new(); // Queue for the state buffer
     private float currentTime = 0f;
 
     // Include previous keyboard state to check for key releases
@@ -51,19 +51,22 @@ namespace CasinoRoyale.Classes.GameObjects
         // Reset horizontal velocity each frame (for responsive controls)
         Velocity = new Vector2(0, Velocity.Y);
         
-        if (ks.IsKeyDown(Keys.A)) // Can be held
+        if (ks.IsKeyDown(Keys.A)) // Left, Can be held
         {
-            // Set horizontal velocity instead of directly modifying coordinates
-            Velocity = new Vector2(-MaxRunSpeed, Velocity.Y);
+            Velocity = new Vector2(-StandardSpeed, Velocity.Y);
         }
-        if (ks.IsKeyDown(Keys.D)) // Can be held
+        if (ks.IsKeyDown(Keys.D)) // Right, Can be held
         {
-            // Set horizontal velocity instead of directly modifying coordinates
-            Velocity = new Vector2(MaxRunSpeed, Velocity.Y);
+            Velocity = new Vector2(StandardSpeed, Velocity.Y);
         }
-        if (ks.GetPressedKeys().Contains(Keys.W)) // Needs to be pressed
+        if ((ks.GetPressedKeys().Contains(Keys.W) && !previousKs.GetPressedKeys().Contains(Keys.W)) ||
+            (ks.GetPressedKeys().Contains(Keys.Space) && !previousKs.GetPressedKeys().Contains(Keys.Space)))
         {
             m_playerAttemptedJump = true;
+        }
+        if (ks.IsKeyDown(Keys.LeftShift)) // Sprint, Can be held
+        {
+            Velocity = new Vector2(StandardSpeed * 1.5f, Velocity.Y);
         }
 
         // Update velocity according to forces and movement requests
@@ -194,7 +197,7 @@ namespace CasinoRoyale.Classes.GameObjects
             ges = GetEntityState(),
             mass = mass,
             initialJumpVelocity = initialJumpVelocity,
-            maxRunSpeed = maxRunSpeed
+            maxRunSpeed = standardSpeed
         };
     }
 
