@@ -166,12 +166,27 @@ namespace CasinoRoyale.Classes.GameStates
             // Don't process multiplayer logic if game isn't fully initialized
             if (LocalPlayer == null || GameWorld == null || GameWorld.WorldObjects == null) return;
             
+            // Process local player's casino machine states for coin spawning
+            // Check if any casino machines have spawn requests and process them immediately
+            foreach (var machine in GameWorld.WorldObjects.CasinoMachines)
+            {
+                if (machine.SpawnedCoin)
+                {
+                    Console.WriteLine($"Host found spawn request from machine {machine.GetState().machineNum} - spawning coin immediately");
+                    GameWorld.WorldObjects.SpawnCoinFromCasinoMachine(machine.GetState().machineNum);
+                    break; // Only process one spawn request per frame to avoid issues
+                }
+            }
+            
             // Process buffered states and update interpolation for network players
             foreach (var entry in networkPlayers.Values)
             {
                 entry.Player.ProcessBufferedStates(deltaTime);
                 entry.Player.UpdateInterpolation(deltaTime);
             }
+            
+            // Update game world objects (including coins)
+            GameWorld.WorldObjects.Update(deltaTime, GameWorld.GameArea);
             
             // Check for player collisions
             CheckPlayerCollisions();
@@ -327,8 +342,9 @@ namespace CasinoRoyale.Classes.GameStates
                 index++;
             }
             
-            // Create casino machine states
+            // Create casino machine states and coin states
             var casinoMachineStates = GameWorld.WorldObjects.GetCasinoMachineStates();
+            var coinStates = GameWorld.WorldObjects.GetCoinStates();
             
             // Send to all clients individually
             foreach (var entry in networkPlayers)
@@ -336,7 +352,8 @@ namespace CasinoRoyale.Classes.GameStates
                 SendPacket(new PlayerReceiveUpdatePacket
                 {
                     playerStates = playerStates,
-                    casinoMachineStates = casinoMachineStates
+                    casinoMachineStates = casinoMachineStates,
+                    coinStates = coinStates
                 }, entry.Value.Peer, DeliveryMethod.Unreliable);
             }
         }
@@ -362,6 +379,12 @@ namespace CasinoRoyale.Classes.GameStates
             {
                 // Add state to buffer for delayed application
                 networkPlayer.Player.AddBufferedState(packet.coords, packet.velocity, gameTime);
+            }
+            
+            // Process casino machine states for coin spawning requests
+            if (packet.casinoMachineStates != null && packet.casinoMachineStates.Length > 0)
+            {
+                GameWorld.WorldObjects.ProcessCasinoMachineStates(packet.casinoMachineStates);
             }
         }
         
@@ -510,7 +533,8 @@ namespace CasinoRoyale.Classes.GameStates
                 playerVelocity = newPlayer.Velocity,
                 otherPlayerStates = [], // TODO: Add other players
                 platformStates = platformStates,
-                casinoMachineStates = casinoMachineStates
+                casinoMachineStates = casinoMachineStates,
+                coinStates = GameWorld.WorldObjects.GetCoinStates()
             };
             
             SendPacket(joinAcceptPacket, peer, DeliveryMethod.ReliableOrdered);

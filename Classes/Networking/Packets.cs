@@ -40,6 +40,7 @@ public class JoinAcceptPacket : INetSerializable {
     public PlayerState[] otherPlayerStates { get; set; }
     public PlatformState[] platformStates { get; set; }
     public CasinoMachineState[] casinoMachineStates { get; set; }
+    public CoinState[] coinStates { get; set; }
     
     public void Serialize(NetDataWriter writer)
     {
@@ -59,6 +60,10 @@ public class JoinAcceptPacket : INetSerializable {
             
         writer.Put((ushort)casinoMachineStates.Length);
         foreach (var state in casinoMachineStates)
+            writer.Put(state);
+            
+        writer.Put((ushort)coinStates.Length);
+        foreach (var state in coinStates)
             writer.Put(state);
     }
     
@@ -84,6 +89,11 @@ public class JoinAcceptPacket : INetSerializable {
         casinoMachineStates = new CasinoMachineState[casinoMachineCount];
         for (int i = 0; i < casinoMachineCount; i++)
             casinoMachineStates[i] = reader.Get<CasinoMachineState>();
+            
+        ushort coinCount = reader.GetUShort();
+        coinStates = new CoinState[coinCount];
+        for (int i = 0; i < coinCount; i++)
+            coinStates[i] = reader.Get<CoinState>();
     }
 }   
 
@@ -91,12 +101,21 @@ public class PlayerSendUpdatePacket : INetSerializable {
     public Vector2 coords { get; set; }
     public Vector2 velocity { get; set; }
     public float dt { get; set; }
+    public CasinoMachineState[] casinoMachineStates { get; set; }
     
     public void Serialize(NetDataWriter writer)
     {
         writer.Put(coords);
         writer.Put(velocity);
         writer.Put(dt);
+        
+        // Serialize casino machine states
+        writer.Put((ushort)(casinoMachineStates?.Length ?? 0));
+        if (casinoMachineStates != null)
+        {
+            foreach (var state in casinoMachineStates)
+                writer.Put(state);
+        }
     }
     
     public void Deserialize(NetDataReader reader)
@@ -104,12 +123,21 @@ public class PlayerSendUpdatePacket : INetSerializable {
         coords = reader.GetVector2();
         velocity = reader.GetVector2();
         dt = reader.GetFloat();
+        
+        // Deserialize casino machine states
+        ushort casinoMachineCount = reader.GetUShort();
+        casinoMachineStates = new CasinoMachineState[casinoMachineCount];
+        for (int i = 0; i < casinoMachineCount; i++)
+        {
+            casinoMachineStates[i] = reader.Get<CasinoMachineState>();
+        }
     }
 }
 
 public class PlayerReceiveUpdatePacket : INetSerializable {
     public PlayerState[] playerStates { get; set; }
     public CasinoMachineState[] casinoMachineStates { get; set; }
+    public CoinState[] coinStates { get; set; }
     
     public void Serialize(NetDataWriter writer)
     {
@@ -120,6 +148,10 @@ public class PlayerReceiveUpdatePacket : INetSerializable {
             
         writer.Put((ushort)casinoMachineStates.Length);
         foreach (var state in casinoMachineStates)
+            writer.Put(state);
+            
+        writer.Put((ushort)coinStates.Length);
+        foreach (var state in coinStates)
             writer.Put(state);
     }
     
@@ -135,6 +167,11 @@ public class PlayerReceiveUpdatePacket : INetSerializable {
         casinoMachineStates = new CasinoMachineState[casinoMachineCount];
         for (int i = 0; i < casinoMachineCount; i++)
             casinoMachineStates[i] = reader.Get<CasinoMachineState>();
+            
+        ushort coinCount = reader.GetUShort();
+        coinStates = new CoinState[coinCount];
+        for (int i = 0; i < coinCount; i++)
+            coinStates[i] = reader.Get<CoinState>();
     }
 }
 
@@ -178,6 +215,20 @@ public class PlayerJoinedGamePacket : INetSerializable {
         public void Deserialize(NetDataReader reader)
         {
             pid = reader.GetUInt();
+        }
+    }
+    
+    public class CoinSpawnedPacket : INetSerializable {
+        public CoinState coinState { get; set; }
+        
+        public void Serialize(NetDataWriter writer)
+        {
+            writer.Put(coinState);
+        }
+        
+        public void Deserialize(NetDataReader reader)
+        {
+            coinState = reader.Get<CoinState>();
         }
     }
 }

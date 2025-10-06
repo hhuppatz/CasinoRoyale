@@ -134,6 +134,9 @@ namespace CasinoRoyale.Classes.GameStates
             // Don't process multiplayer logic if game isn't fully initialized
             if (GameWorld == null || GameWorld.WorldObjects == null) return;
             
+            // Update game world objects (including coins)
+            GameWorld.WorldObjects.Update(deltaTime, GameWorld.GameArea);
+            
             // Process buffered states and update interpolation for other players
             foreach (var otherPlayer in otherPlayers)
             {
@@ -270,7 +273,8 @@ namespace CasinoRoyale.Classes.GameStates
             {
                 coords = LocalPlayer.Coords,
                 velocity = LocalPlayer.Velocity,
-                dt = deltaTime
+                dt = deltaTime,
+                casinoMachineStates = GameWorld.WorldObjects.GetCasinoMachineStates()
             };
             
             SendPacket(playerState, DeliveryMethod.Unreliable);
@@ -337,6 +341,12 @@ namespace CasinoRoyale.Classes.GameStates
                     }
                 }
             }
+            
+            // Update coins
+            if (update.coinStates != null)
+            {
+                GameWorld.WorldObjects.RecreateCoinsFromStates(update.coinStates);
+            }
         }
         
         private void OnJoinAcceptReceived(JoinAcceptPacket joinAccept, NetPeer peer)
@@ -372,6 +382,12 @@ namespace CasinoRoyale.Classes.GameStates
 
             // Recreate casino machines from casino machine states using GameWorld
             GameWorld.WorldObjects.RecreateCasinoMachinesFromStates(Content, joinAccept.casinoMachineStates);
+            
+            // Recreate coins from coin states
+            if (joinAccept.coinStates != null)
+            {
+                GameWorld.WorldObjects.RecreateCoinsFromStates(joinAccept.coinStates);
+            }
             
             // Create other players from other player states
             foreach (var otherPlayerState in joinAccept.otherPlayerStates ?? [])

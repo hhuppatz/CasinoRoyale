@@ -10,13 +10,11 @@ using CasinoRoyale.Classes.GameSystems;
 
 namespace CasinoRoyale.Classes.GameObjects
 {
-    public class PlayableCharacter(uint pid, string username, Texture2D tex, Vector2 coords, Vector2 velocity, float mass, float initialJumpVelocity, float standardSpeed, Rectangle hitbox, bool awake) : GameEntity(coords, velocity, hitbox, awake), CasinoRoyale.Classes.GameObjects.Interfaces.IDrawable
+    public class PlayableCharacter(uint pid, string username, Texture2D tex, Vector2 coords, Vector2 velocity, float mass, float initialJumpVelocity, float standardSpeed, Rectangle hitbox, bool awake) : GameEntity(coords, velocity, hitbox, awake, mass), CasinoRoyale.Classes.GameObjects.Interfaces.IDrawable
 {
     private readonly uint pid = pid;
     private readonly string username = username;
     private Texture2D tex = tex;
-    private float mass = mass;
-    public float Mass { get => mass; set => mass = value; }
 
     private float initialJumpVelocity = initialJumpVelocity;
     public float InitialJumpVelocity { get => initialJumpVelocity; set => initialJumpVelocity = value; }
@@ -68,6 +66,12 @@ namespace CasinoRoyale.Classes.GameObjects
         {
             Velocity = new Vector2(StandardSpeed * 1.5f, Velocity.Y);
         }
+        
+        // Check for casino machine interaction (H key)
+        if (ks.GetPressedKeys().Contains(Keys.H) && !previousKs.GetPressedKeys().Contains(Keys.H))
+        {
+            TryInteractWithCasinoMachine(gameWorld);
+        }
 
         // Update velocity according to forces and movement requests
         UpdateJump(m_playerAttemptedJump, gameWorld);
@@ -88,6 +92,21 @@ namespace CasinoRoyale.Classes.GameObjects
         // Check if player has landed after falling (end jump state)
         else if (InJump && Velocity.Y >= 0 && PhysicsSystem.IsPlayerGrounded(gameWorld.GameArea, gameWorld.WorldObjects, this)) InJump = false;
 
+    }
+    
+    private void TryInteractWithCasinoMachine(GameWorld gameWorld)
+    {
+        // Check if player is colliding with any casino machine
+        foreach (var machine in gameWorld.WorldObjects.CasinoMachines)
+        {
+            if (Hitbox.Intersects(machine.Hitbox))
+            {
+                // Player is colliding with this casino machine, request coin spawn
+                Console.WriteLine($"Player {GetID()} pressed 'H' - setting spawnedCoin=true for machine {machine.GetState().machineNum}");
+                machine.SpawnedCoin = true;
+                break; // Only interact with one machine at a time
+            }
+        }
     }
 
     // setters
@@ -195,7 +214,7 @@ namespace CasinoRoyale.Classes.GameObjects
             pid = pid,
             username = username,
             ges = GetEntityState(),
-            mass = mass,
+            mass = Mass,
             initialJumpVelocity = initialJumpVelocity,
             maxRunSpeed = standardSpeed
         };

@@ -75,6 +75,7 @@ namespace CasinoRoyale.Classes.GameSystems
             
             WorldObjects?.DrawPlatforms(spriteBatch, camera, ratio);
             WorldObjects?.DrawCasinoMachines(spriteBatch, camera, ratio);
+            WorldObjects?.DrawCoins(spriteBatch, camera, ratio);
         }
         
         // Calculates player origin based on game area and texture height

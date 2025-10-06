@@ -16,18 +16,21 @@ namespace CasinoRoyale.Classes.GameObjects
     public Vector2 Velocity { get => _velocity; set => _velocity = value; }
     private Rectangle _hitbox;
     public Rectangle Hitbox { get => _hitbox; set => _hitbox = value; }
+    private float mass;
+    public float Mass { get => mass; set => mass = value; }
 
-    public GameEntity(Vector2 coords, Vector2 velocity, Rectangle hitbox, bool awake) {
+    public GameEntity(Vector2 coords, Vector2 velocity, Rectangle hitbox, bool awake, float mass = 1.0f) {
         this.awake = awake;
         Coords = coords;
         Velocity = velocity;
         Hitbox = hitbox;
+        Mass = mass;
         MovementEvent += UpdateHitbox;
     }
 
     public void Move(float dt)
     {
-        Coords += Velocity * dt;
+        Coords += Velocity * dt * Mass;
     }
 
     protected virtual void OnMovement(EntityMovementEventArgs e)
@@ -55,7 +58,8 @@ namespace CasinoRoyale.Classes.GameObjects
         return new GameEntityState {
             awake = awake,
             coords = Coords,
-            velocity = Velocity
+            velocity = Velocity,
+            mass = Mass
         };
     }
 }
@@ -65,12 +69,14 @@ public struct GameEntityState : INetSerializable
     public bool awake;
     public Vector2 coords;
     public Vector2 velocity;
+    public float mass;
 
     public void Serialize(NetDataWriter writer)
     {
         writer.Put(awake);
         writer.Put(coords);
         writer.Put(velocity);
+        writer.Put(mass);
     }
 
     public void Deserialize(NetDataReader reader)
