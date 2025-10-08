@@ -11,13 +11,15 @@ namespace CasinoRoyale.Classes.GameObjects
     private bool awake;
     private event EventHandler<EntityMovementEventArgs> MovementEvent;
     private Vector2 _coords;
-    public Vector2 Coords { get => _coords; set { _coords = value; OnMovement(new EntityMovementEventArgs { coords = _coords });}  }
+    public Vector2 Coords { get => _coords; set { _coords = value; MarkAsChanged(); OnMovement(new EntityMovementEventArgs { coords = _coords });}  }
     private Vector2 _velocity;
-    public Vector2 Velocity { get => _velocity; set => _velocity = value; }
+    public Vector2 Velocity { get => _velocity; set { _velocity = value; MarkAsChanged(); } }
     private Rectangle _hitbox;
-    public Rectangle Hitbox { get => _hitbox; set => _hitbox = value; }
+    public Rectangle Hitbox { get => _hitbox; set { _hitbox = value; MarkAsChanged(); } }
     private float mass;
-    public float Mass { get => mass; set => mass = value; }
+    public float Mass { get => mass; set { mass = value; MarkAsChanged(); } }
+    private bool _hasChanged = false;
+    public bool HasChanged { get => _hasChanged; private set => _hasChanged = value; }
 
     public GameEntity(Vector2 coords, Vector2 velocity, Rectangle hitbox, bool awake, float mass = 1.0f) {
         this.awake = awake;
@@ -46,11 +48,23 @@ namespace CasinoRoyale.Classes.GameObjects
     public void AwakenEntity()
     {
         awake = true;
+        MarkAsChanged();
     }
 
     public void SleepEntity()
     {
         awake = false;
+        MarkAsChanged();
+    }
+
+    public void MarkAsChanged()
+    {
+        HasChanged = true;
+    }
+
+    public void ClearChangedFlag()
+    {
+        HasChanged = false;
     }
 
     public GameEntityState GetEntityState()
@@ -84,6 +98,7 @@ public struct GameEntityState : INetSerializable
         awake = reader.GetBool();
         coords = reader.GetVector2();
         velocity = reader.GetVector2();
+        mass = reader.GetFloat();
     }
 }
 

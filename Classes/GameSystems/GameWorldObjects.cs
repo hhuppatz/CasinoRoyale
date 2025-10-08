@@ -23,6 +23,7 @@ namespace CasinoRoyale.Classes.GameSystems
         private readonly Texture2D coinTex = content.Load<Texture2D>(properties.get("coin.image", "Coin"));
         public List<Coin> Coins { get; private set; } = [];
         private uint nextCoinId = 0;
+        private readonly Dictionary<uint, uint> processedRequests = new(); // machineNum -> lastProcessedRequestId
 
         //
         // Update methods
@@ -36,15 +37,6 @@ namespace CasinoRoyale.Classes.GameSystems
         public void UpdateCoins(float dt, Rectangle gameArea)
         {
             // Remove coins that have fallen off the world or been stationary for too long
-            var coinsToRemove = Coins.Where(coin => 
-                coin.Coords.Y > gameArea.Bottom || 
-                (Math.Abs(coin.Velocity.X) < 0.01f && Math.Abs(coin.Velocity.Y) < 0.01f && coin.Coords.Y > gameArea.Height * 0.9f)).ToList();
-                
-            foreach (var coin in coinsToRemove)
-            {
-                Console.WriteLine($"Removing coin {coin.CoinId}: Y={coin.Coords.Y}, gameArea.Bottom={gameArea.Bottom}, velocity=({coin.Velocity.X}, {coin.Velocity.Y})");
-            }
-            
             Coins.RemoveAll(coin => 
                 coin.Coords.Y > gameArea.Bottom || 
                 (Math.Abs(coin.Velocity.X) < 0.01f && Math.Abs(coin.Velocity.Y) < 0.01f && coin.Coords.Y > gameArea.Height * 0.9f));
@@ -63,11 +55,6 @@ namespace CasinoRoyale.Classes.GameSystems
         // Draws all coins using the provided SpriteBatch and camera
         public void DrawCoins(SpriteBatch spriteBatch, MainCamera camera, Vector2 ratio)
         {
-            if (Coins.Count > 0)
-            {
-                Console.WriteLine($"Drawing {Coins.Count} coins");
-            }
-            
             foreach (var coin in Coins)
             {
                 if (coin.GetTexture() != null)
@@ -75,10 +62,6 @@ namespace CasinoRoyale.Classes.GameSystems
                     spriteBatch.Draw(coin.GetTexture(),
                         camera.TransformToView(coin.Coords),
                         null, Color.White, 0.0f, Vector2.Zero, ratio, 0, 0);
-                }
-                else
-                {
-                    Console.WriteLine($"Warning: Coin {coin.CoinId} has null texture");
                 }
             }
         }
@@ -172,11 +155,21 @@ namespace CasinoRoyale.Classes.GameSystems
         // Generates the complete game world with platforms and casino machines
         public void GenerateGameWorld(ContentManager content, Rectangle gameArea, Vector2 playerOrigin)
         {
+            Logger.Info($"GENERATION DEBUG: GenerateGameWorld called - GameArea: {gameArea}, PlayerOrigin: {playerOrigin}");
+            
+            // Clear any existing coins from previous runs
+            Coins.Clear();
+            nextCoinId = 0;
+            
             // Generate platforms
+            Logger.Info("GENERATION DEBUG: Generating platforms...");
             GeneratePlatforms(content, gameArea, playerOrigin);
+            Logger.Info($"GENERATION DEBUG: Platform generation complete - Created {Platforms.Count} platforms");
             
             // Generate casino machines
+            Logger.Info("GENERATION DEBUG: Generating casino machines...");
             GenerateCasinoMachines();
+            Logger.Info($"GENERATION DEBUG: Casino machine generation complete - Created {CasinoMachines.Count} casino machines");
         }
         
         // Generates platforms using the same logic as HostGameState
@@ -213,13 +206,33 @@ namespace CasinoRoyale.Classes.GameSystems
             int casinoMachineSpacing = int.Parse(gameProperties.get("casinoMachine.minSpacing", "64"));
             int minPlatformWidth = int.Parse(gameProperties.get("casinoMachine.minPlatformWidth", "128"));
             
+            Logger.Info($"GENERATION DEBUG: Starting casino machine generation - Platforms: {Platforms.Count}, Spawn chance: {casinoMachineSpawnChance}%, Min platform width: {minPlatformWidth}");
+            
+            int platformsChecked = 0;
+            int platformsWideEnough = 0;
+            int spawnAttempts = 0;
+            int successfulSpawns = 0;
+            
             foreach (var platform in Platforms)
             {
+                platformsChecked++;
+                
                 // Only spawn casino machines on platforms that are wide enough
-                if (platform.GetWidth() < minPlatformWidth) continue; // Skip narrow platforms
+                if (platform.GetWidth() < minPlatformWidth) 
+                {
+                    Logger.Info($"GENERATION DEBUG: Platform {platformsChecked} too narrow: {platform.GetWidth()} < {minPlatformWidth}");
+                    continue; // Skip narrow platforms
+                }
+                
+                platformsWideEnough++;
+                Logger.Info($"GENERATION DEBUG: Platform {platformsChecked} is wide enough: {platform.GetWidth()} >= {minPlatformWidth}");
                 
                 // Check if we should spawn a casino machine on this platform
-                if (rand.Next(0, 100) < casinoMachineSpawnChance)
+                int roll = rand.Next(0, 100);
+                spawnAttempts++;
+                Logger.Info($"GENERATION DEBUG: Spawn attempt {spawnAttempts}: rolled {roll}, need < {casinoMachineSpawnChance}");
+                
+                if (roll < casinoMachineSpawnChance)
                 {
                     // Calculate spawn position on the platform
                     Vector2 spawnPosition = CalculateCasinoMachinePosition(platform, rand, casinoMachineSpacing);
@@ -227,19 +240,13 @@ namespace CasinoRoyale.Classes.GameSystems
                     // Create casino machine at the calculated position
                     var machine = new CasinoMachine((uint)CasinoMachines.Count, casinoMachineFactory.GetTexture(), spawnPosition);
                     CasinoMachines.Add(machine);
+                    successfulSpawns++;
+                    
+                    Logger.Info($"GENERATION DEBUG: Successfully created casino machine {machine.GetState().machineNum} at {spawnPosition}");
                 }
             }
             
-            // Debug output for testing
-            Console.WriteLine($"Generated {CasinoMachines.Count} casino machines on {Platforms.Count} platforms");
-            
-            // Debug platform generation
-            int visiblePlatforms = Platforms.Count(p => p?.GetTex() != null && p.GetWidth() > 0);
-            int invisiblePlatforms = Platforms.Count - visiblePlatforms;
-            if (invisiblePlatforms > 0)
-            {
-                Console.WriteLine($"Warning: {invisiblePlatforms} platforms may be invisible (zero width or null texture)");
-            }
+            Logger.Info($"GENERATION DEBUG: Casino machine generation complete - Platforms checked: {platformsChecked}, Wide enough: {platformsWideEnough}, Spawn attempts: {spawnAttempts}, Successful spawns: {successfulSpawns}, Total machines: {CasinoMachines.Count}");
         }
         
         // Calculates appropriate spawn position for casino machine on a platform
@@ -299,6 +306,7 @@ namespace CasinoRoyale.Classes.GameSystems
         // Recreates platforms from platform states (used by Client when receiving world data)
         public void RecreatePlatformsFromStates(ContentManager content, PlatformState[] platformStates)
         {
+            Console.WriteLine($"RecreatePlatformsFromStates called with {platformStates?.Length ?? 0} platform states");
             Platforms = [];
             foreach (var platformState in platformStates ?? [])
             {
@@ -309,6 +317,7 @@ namespace CasinoRoyale.Classes.GameSystems
                     platformState.BR);
                 Platforms.Add(platform);
             }
+            Console.WriteLine($"Created {Platforms.Count} platforms");
         }
         
         // Recreates casino machines from casino machine states (used by Client when receiving world data)
@@ -335,6 +344,18 @@ namespace CasinoRoyale.Classes.GameSystems
             }
             return platformStates;
         }
+
+        // Gets only changed platform states for networking
+        public PlatformState[] GetChangedPlatformStates()
+        {
+            var changedPlatforms = Platforms.Where(p => p.HasChanged).ToList();
+            var platformStates = new PlatformState[changedPlatforms.Count];
+            for (int i = 0; i < changedPlatforms.Count; i++)
+            {
+                platformStates[i] = changedPlatforms[i].GetState();
+            }
+            return platformStates;
+        }
         
         // Gets casino machine states for networking (used by Host to send to Client)
         public CasinoMachineState[] GetCasinoMachineStates()
@@ -346,66 +367,174 @@ namespace CasinoRoyale.Classes.GameSystems
             }
             return casinoMachineStates;
         }
+
+        // Gets only changed casino machine states for networking
+        public CasinoMachineState[] GetChangedCasinoMachineStates()
+        {
+            var changedMachines = CasinoMachines.Where(m => m.HasChanged).ToList();
+            var casinoMachineStates = new CasinoMachineState[changedMachines.Count];
+            for (int i = 0; i < changedMachines.Count; i++)
+            {
+                casinoMachineStates[i] = changedMachines[i].GetState();
+            }
+            return casinoMachineStates;
+        }
+
+        // Get individual object updates with IDs for efficient networking
+        public List<(uint id, PlatformState state)> GetChangedPlatformUpdates()
+        {
+            var updates = new List<(uint, PlatformState)>();
+            for (int i = 0; i < Platforms.Count; i++)
+            {
+                if (Platforms[i].HasChanged)
+                {
+                    updates.Add(((uint)i, Platforms[i].GetState()));
+                }
+            }
+            return updates;
+        }
+
+        public List<(uint id, CasinoMachineState state)> GetChangedCasinoMachineUpdates()
+        {
+            var updates = new List<(uint, CasinoMachineState)>();
+            for (int i = 0; i < CasinoMachines.Count; i++)
+            {
+                if (CasinoMachines[i].HasChanged)
+                {
+                    updates.Add(((uint)i, CasinoMachines[i].GetState()));
+                }
+            }
+            return updates;
+        }
+
+
+        // Update individual objects by ID for efficient networking
+        public void UpdatePlatformById(uint id, PlatformState state)
+        {
+            if (id < Platforms.Count)
+            {
+                Platforms[(int)id].SetState(state);
+            }
+        }
+
+        public void UpdateCasinoMachineById(uint id, CasinoMachineState state)
+        {
+            if (id < CasinoMachines.Count)
+            {
+                CasinoMachines[(int)id].SetState(state);
+            }
+        }
+
+
+        public void RemoveCoinById(uint id)
+        {
+            // Find and remove coin by actual coinId, not array index
+            var coin = Coins.FirstOrDefault(c => c.CoinId == id);
+            if (coin != null)
+            {
+                Coins.Remove(coin);
+            }
+        }
         
         // Coin management methods
         public Coin CreateCoin(Vector2 position, Vector2 velocity)
         {
             var coin = new Coin(nextCoinId++, coinTex, position, velocity);
+            coin.MarkAsChanged(); // Mark new coin as changed
             Coins.Add(coin);
             return coin;
         }
         
-        public void SpawnCoinFromCasinoMachine(uint machineNum)
+        public Coin SpawnCoinFromCasinoMachine(uint machineNum)
         {
             var machine = CasinoMachines.FirstOrDefault(m => m.GetState().machineNum == machineNum);
             if (machine != null)
             {
                 var coin = machine.SpawnCoin(nextCoinId++, coinTex);
+                coin.MarkAsChanged(); // Mark new coin as changed
                 Coins.Add(coin);
-                Console.WriteLine($"Spawned coin {coin.CoinId} from casino machine {machineNum} at position {coin.Coords}");
                 // Reset the spawnedCoin flag after spawning
                 machine.SpawnedCoin = false;
+                machine.MarkAsChanged(); // Mark machine as changed since spawnedCoin flag changed
+                return coin;
             }
-            else
-            {
-                Console.WriteLine($"Warning: Could not find casino machine {machineNum} for coin spawning");
-            }
+            return null;
         }
         
         // Process casino machine states from clients and spawn coins if requested
-        public void ProcessCasinoMachineStates(CasinoMachineState[] casinoMachineStates)
+        public List<(uint machineNum, uint requestId, Coin coin, bool wasSuccessful)> ProcessCasinoMachineStates(CasinoMachineState[] casinoMachineStates)
         {
-            Console.WriteLine($"ProcessCasinoMachineStates called with {casinoMachineStates?.Length ?? 0} states");
+            var results = new List<(uint machineNum, uint requestId, Coin coin, bool wasSuccessful)>();
+            
+            Logger.Info($"HOST DEBUG: ProcessCasinoMachineStates called with {casinoMachineStates?.Length ?? 0} states");
+            Logger.Info($"HOST DEBUG: Host has {CasinoMachines.Count} casino machines");
             
             foreach (var state in casinoMachineStates ?? [])
             {
+                Logger.Info($"HOST DEBUG: Processing state for machine {state.machineNum}, spawnedCoin={state.spawnedCoin}");
+                
                 var machine = CasinoMachines.FirstOrDefault(m => m.GetState().machineNum == state.machineNum);
-                if (machine != null)
+                if (machine == null)
                 {
-                    Console.WriteLine($"Machine {state.machineNum}: state.spawnedCoin={state.spawnedCoin}, machine.SpawnedCoin={machine.SpawnedCoin}");
-                    
-                    if (state.spawnedCoin && !machine.SpawnedCoin)
+                    Logger.Info($"HOST DEBUG: Machine {state.machineNum} not found in host's casino machines!");
+                    continue;
+                }
+                
+                Logger.Info($"HOST DEBUG: Found machine {state.machineNum}, host spawnedCoin={machine.SpawnedCoin}");
+                
+                if (machine != null && state.spawnedCoin && !machine.SpawnedCoin)
+                {
+                    // Client requested coin spawn and machine hasn't spawned one yet
+                    Logger.Info($"HOST DEBUG: Attempting to spawn coin from machine {state.machineNum}");
+                    var coin = SpawnCoinFromCasinoMachine(state.machineNum);
+                    if (coin != null)
                     {
-                        // Client requested coin spawn and machine hasn't spawned one yet
-                        Console.WriteLine($"Spawning coin from machine {state.machineNum}");
-                        SpawnCoinFromCasinoMachine(state.machineNum);
+                        results.Add((state.machineNum, 0, coin, true)); // requestId not needed anymore
+                        Logger.Info($"HOST DEBUG: Successfully spawned coin {coin.CoinId} from machine {state.machineNum}");
+                    }
+                    else
+                    {
+                        results.Add((state.machineNum, 0, null, false));
+                        Logger.Info($"HOST DEBUG: Failed to spawn coin from machine {state.machineNum}");
                     }
                 }
-                else
+                else if (machine != null && state.spawnedCoin && machine.SpawnedCoin)
                 {
-                    Console.WriteLine($"Warning: Machine {state.machineNum} not found in CasinoMachines list");
+                    Logger.Info($"HOST DEBUG: Machine {state.machineNum} already spawned a coin, ignoring request");
+                }
+                else if (machine != null && !state.spawnedCoin)
+                {
+                    Logger.Info($"HOST DEBUG: Machine {state.machineNum} spawnedCoin=false, ignoring");
                 }
             }
+            return results;
         }
         
         public void RecreateCoinsFromStates(CoinState[] coinStates)
         {
+            Console.WriteLine($"RecreateCoinsFromStates called with {coinStates?.Length ?? 0} coin states");
             Coins.Clear();
+            uint maxCoinId = 0;
             foreach (var coinState in coinStates ?? [])
             {
                 var coin = new Coin(coinState.coinId, coinTex, coinState.coords, coinState.velocity);
+                coin.MarkAsChanged(); // Mark recreated coins as changed
                 Coins.Add(coin);
+                
+                // Track the highest coin ID to avoid conflicts
+                if (coinState.coinId >= maxCoinId)
+                {
+                    maxCoinId = coinState.coinId + 1;
+                }
             }
+            
+            // Update nextCoinId to avoid conflicts with existing coins
+            if (maxCoinId > nextCoinId)
+            {
+                nextCoinId = maxCoinId;
+            }
+            
+            Console.WriteLine($"Created {Coins.Count} coins, nextCoinId set to {nextCoinId}");
         }
         
         public CoinState[] GetCoinStates()
@@ -416,6 +545,53 @@ namespace CasinoRoyale.Classes.GameSystems
                 coinStates[i] = Coins[i].GetState();
             }
             return coinStates;
+        }
+
+        // Gets only changed coin states for networking
+        public CoinState[] GetChangedCoinStates()
+        {
+            var changedCoins = Coins.Where(c => c.HasChanged).ToList();
+            var coinStates = new CoinState[changedCoins.Count];
+            for (int i = 0; i < changedCoins.Count; i++)
+            {
+                coinStates[i] = changedCoins[i].GetState();
+            }
+            return coinStates;
+        }
+
+        // Clear change flags for all objects after sending updates
+        public void ClearAllChangedFlags()
+        {
+            foreach (var platform in Platforms)
+            {
+                platform.ClearChangedFlag();
+            }
+            foreach (var machine in CasinoMachines)
+            {
+                machine.ClearChangedFlag();
+            }
+            // Coins handle their own physics deterministically - no change flags to clear
+        }
+
+        // Getter for coin texture (needed by clients)
+        public Texture2D GetCoinTexture()
+        {
+            return coinTex;
+        }
+        
+        // Get next coin ID for client-side coin creation
+        public uint GetNextCoinId()
+        {
+            return nextCoinId++;
+        }
+        
+        // Method to ensure proper coin ID synchronization
+        public void EnsureCoinIdSync(uint coinId)
+        {
+            if (coinId >= nextCoinId)
+            {
+                nextCoinId = coinId + 1;
+            }
         }
     }
 }

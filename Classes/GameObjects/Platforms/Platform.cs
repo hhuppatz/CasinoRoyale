@@ -15,7 +15,9 @@ namespace CasinoRoyale.Classes.GameObjects.Platforms
     private Texture2D tex;
     private event EventHandler<PlatformMovementEventArgs> MovementEvent;
     private Rectangle _hitbox;
-    public Rectangle Hitbox { get => _hitbox; set => _hitbox = value; }
+    public Rectangle Hitbox { get => _hitbox; set { _hitbox = value; MarkAsChanged(); } }
+    private bool _hasChanged = false;
+    public bool HasChanged { get => _hasChanged; private set => _hasChanged = value; }
 
     public Platform(uint platNum, Texture2D tex, Vector2 TL, Vector2 BR)
     {
@@ -36,6 +38,7 @@ namespace CasinoRoyale.Classes.GameObjects.Platforms
     public PlatformState GetState()
     {
         return new PlatformState {
+            objectType = ObjectType.PLATFORM,
             platNum = platNum,
             TL = TL,
             BR = BR
@@ -80,6 +83,28 @@ namespace CasinoRoyale.Classes.GameObjects.Platforms
         }
     }
 
+    public void MarkAsChanged()
+    {
+        HasChanged = true;
+    }
+
+    public void ClearChangedFlag()
+    {
+        HasChanged = false;
+    }
+
+    public void SetState(PlatformState state)
+    {
+        // Set both top-left and bottom-right coordinates from the state
+        TL = state.TL;
+        BR = state.BR;
+        
+        // Trigger movement event to update hitbox and other dependent properties
+        OnMovement(new PlatformMovementEventArgs { coords = TL, length = GetWidth() });
+        
+        ClearChangedFlag(); // Clear changed flag since we're setting the state
+    }
+
     protected virtual void OnMovement(PlatformMovementEventArgs e)
     {
         MovementEvent?.Invoke(this, e);
@@ -110,15 +135,18 @@ namespace CasinoRoyale.Classes.GameObjects.Platforms
 
 public struct PlatformState: INetSerializable
 {
+    public ObjectType objectType;
     public uint platNum;
     public Vector2 TL;
     public Vector2 BR;
     public void Serialize(NetDataWriter writer) {
+        writer.Put((byte)objectType);
         writer.Put(platNum);
         writer.Put(TL);
         writer.Put(BR);
     }
     public void Deserialize(NetDataReader reader) {
+        objectType = (ObjectType)reader.GetByte();
         platNum = reader.GetUInt();
         TL = reader.GetVector2();
         BR = reader.GetVector2();

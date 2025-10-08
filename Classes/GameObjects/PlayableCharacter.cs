@@ -41,6 +41,12 @@ namespace CasinoRoyale.Classes.GameObjects
     private readonly Queue<BufferedState> stateBuffer = new(); // Queue for the state buffer
     private float currentTime = 0f;
 
+    // Method to mark new player as changed (call after construction)
+    public void MarkAsNewPlayer()
+    {
+        MarkAsChanged();
+    }
+
     // Include previous keyboard state to check for key releases
     public void TryMovePlayer(KeyboardState ks, KeyboardState previousKs, float dt, GameWorld gameWorld)
     {
@@ -64,14 +70,10 @@ namespace CasinoRoyale.Classes.GameObjects
         }
         if (ks.IsKeyDown(Keys.LeftShift)) // Sprint, Can be held
         {
-            Velocity = new Vector2(StandardSpeed * 1.5f, Velocity.Y);
+            Velocity = new Vector2(Velocity.X * 1.5f, Velocity.Y);
         }
         
-        // Check for casino machine interaction (H key)
-        if (ks.GetPressedKeys().Contains(Keys.H) && !previousKs.GetPressedKeys().Contains(Keys.H))
-        {
-            TryInteractWithCasinoMachine(gameWorld);
-        }
+        // Casino machine interaction is now handled by the client-side game state
 
         // Update velocity according to forces and movement requests
         UpdateJump(m_playerAttemptedJump, gameWorld);
@@ -102,7 +104,6 @@ namespace CasinoRoyale.Classes.GameObjects
             if (Hitbox.Intersects(machine.Hitbox))
             {
                 // Player is colliding with this casino machine, request coin spawn
-                Console.WriteLine($"Player {GetID()} pressed 'H' - setting spawnedCoin=true for machine {machine.GetState().machineNum}");
                 machine.SpawnedCoin = true;
                 break; // Only interact with one machine at a time
             }
@@ -211,6 +212,7 @@ namespace CasinoRoyale.Classes.GameObjects
     public PlayerState GetPlayerState()
     {
         return new PlayerState {
+            objectType = ObjectType.PLAYABLECHARACTER,
             pid = pid,
             username = username,
             ges = GetEntityState(),
@@ -229,6 +231,7 @@ namespace CasinoRoyale.Classes.GameObjects
 
 public struct PlayerState : INetSerializable
 {
+    public ObjectType objectType;
     public uint pid;
     public string username;
     public GameEntityState ges;
@@ -238,6 +241,7 @@ public struct PlayerState : INetSerializable
 
     public readonly void Serialize(NetDataWriter writer)
     {
+        writer.Put((byte)objectType);
         writer.Put(pid);
         writer.Put(username);
         writer.Put(ges);
@@ -248,6 +252,7 @@ public struct PlayerState : INetSerializable
 
     public void Deserialize(NetDataReader reader)
     {
+        objectType = (ObjectType)reader.GetByte();
         pid = reader.GetUInt();
         username = reader.GetString();
         ges = reader.GetGES();

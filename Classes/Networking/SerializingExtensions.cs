@@ -19,10 +19,11 @@ namespace CasinoRoyale.Classes.Networking
         writer.Put(ges.awake);
         writer.Put(ges.coords);
         writer.Put(ges.velocity);
+        writer.Put(ges.mass);
     }
 
     public static GameEntityState GetGES(this NetDataReader reader) {
-        return new GameEntityState { awake = reader.GetBool(), coords = reader.GetVector2(), velocity = reader.GetVector2() };
+        return new GameEntityState { awake = reader.GetBool(), coords = reader.GetVector2(), velocity = reader.GetVector2(), mass = reader.GetFloat() };
     }
 
     public static void Put(this NetDataWriter writer, Rectangle rectangle) {

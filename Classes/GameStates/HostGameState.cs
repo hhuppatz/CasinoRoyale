@@ -1,10 +1,12 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using LiteNetLib;
 using LiteNetLib.Utils;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
+using Microsoft.Xna.Framework.Input;
 using CasinoRoyale.Classes.GameObjects;
 using CasinoRoyale.Classes.MonogameMethodExtensions;
 using CasinoRoyale.Classes.Networking;
@@ -66,6 +68,7 @@ namespace CasinoRoyale.Classes.GameStates
             packetProcessor.RegisterNestedType<PlayerState>();
             packetProcessor.RegisterNestedType<PlatformState>();
             packetProcessor.RegisterNestedType<CasinoMachineState>();
+            packetProcessor.RegisterNestedType<CoinState>();
             
             // Set up packet processing - register both with and without NetPeer for relay compatibility
             packetProcessor.SubscribeReusable<PlayerSendUpdatePacket, NetPeer>(OnPlayerStateReceived);
@@ -73,6 +76,10 @@ namespace CasinoRoyale.Classes.GameStates
             
             packetProcessor.SubscribeReusable<JoinPacket, NetPeer>(OnJoinRequestReceived);
             packetProcessor.SubscribeReusable<JoinPacket>(p => OnJoinRequestReceived(p, null));
+            
+            packetProcessor.SubscribeReusable<CoinSpawnedPacket, NetPeer>(OnCoinSpawned);
+            packetProcessor.SubscribeReusable<CoinSpawnedPacket>(p => OnCoinSpawned(p, null));
+            
             
             // Set up relay manager events
             relayManager.OnLobbyCodeReceived += (lobbyCode) =>
@@ -159,6 +166,16 @@ namespace CasinoRoyale.Classes.GameStates
             // Common update logic
             if (LocalPlayer != null)
             {
+                // Check for casino machine interaction (H key) before movement
+                bool hKeyPressed = KeyboardState.GetPressedKeys().Contains(Keys.H);
+                bool hKeyWasPressed = PreviousKeyboardState.GetPressedKeys().Contains(Keys.H);
+                
+                if (hKeyPressed && !hKeyWasPressed)
+                {
+                    Logger.Info("HOST DEBUG: H key pressed - calling TryInteractWithCasinoMachine");
+                    TryInteractWithCasinoMachine();
+                }
+                
                 LocalPlayer.TryMovePlayer(KeyboardState, PreviousKeyboardState, deltaTime, GameWorld);
                 MainCamera.MoveToFollowPlayer(LocalPlayer);
             }
@@ -166,15 +183,44 @@ namespace CasinoRoyale.Classes.GameStates
             // Don't process multiplayer logic if game isn't fully initialized
             if (LocalPlayer == null || GameWorld == null || GameWorld.WorldObjects == null) return;
             
-            // Process local player's casino machine states for coin spawning
-            // Check if any casino machines have spawn requests and process them immediately
-            foreach (var machine in GameWorld.WorldObjects.CasinoMachines)
+            // Process host's own casino machine states for coin spawning
+            var changedMachines = GameWorld.WorldObjects.CasinoMachines.Where(m => m.HasChanged).ToList();
+            
+            if (changedMachines.Count > 0)
             {
-                if (machine.SpawnedCoin)
+                Logger.Info($"HOST DEBUG: Processing {changedMachines.Count} host casino machine states");
+                
+                foreach (var machine in changedMachines)
                 {
-                    Console.WriteLine($"Host found spawn request from machine {machine.GetState().machineNum} - spawning coin immediately");
-                    GameWorld.WorldObjects.SpawnCoinFromCasinoMachine(machine.GetState().machineNum);
-                    break; // Only process one spawn request per frame to avoid issues
+                    if (machine.SpawnedCoin)
+                    {
+                        Logger.Info($"HOST DEBUG: Host machine {machine.GetState().machineNum} has spawnedCoin=true, spawning coin");
+                        var coin = GameWorld.WorldObjects.SpawnCoinFromCasinoMachine(machine.GetState().machineNum);
+                        
+                        if (coin != null)
+                        {
+                            // Notify all clients about the new coin
+                            var coinSpawnedPacket = new CoinSpawnedPacket
+                            {
+                                coinState = coin.GetState()
+                            };
+                            
+                            // Send to all clients
+                            foreach (var entry in networkPlayers)
+                            {
+                                SendPacket(coinSpawnedPacket, entry.Value.Peer, DeliveryMethod.ReliableOrdered);
+                            }
+                            
+                            Logger.Info($"HOST DEBUG: Sent CoinSpawnedPacket for coin {coin.CoinId} to {networkPlayers.Count} clients");
+                        }
+                        else
+                        {
+                            Logger.Info($"HOST DEBUG: Failed to spawn coin from machine {machine.GetState().machineNum}");
+                        }
+                    }
+                    
+                    // Clear the changed flag after processing
+                    machine.ClearChangedFlag();
                 }
             }
             
@@ -301,6 +347,7 @@ namespace CasinoRoyale.Classes.GameStates
                 GetFloatProperty("playerStandardSpeed", 240f),
                 new Rectangle(PlayerOrigin.ToPoint(), new Point(PlayerTexture.Bounds.Width, PlayerTexture.Bounds.Height)),
                 true);
+            LocalPlayer.MarkAsNewPlayer();
             
             // Initialize interpolation targets
             LocalPlayer.InitializeTargets();
@@ -330,32 +377,77 @@ namespace CasinoRoyale.Classes.GameStates
             // Don't send updates if game isn't fully initialized
             if (LocalPlayer == null || GameWorld == null || GameWorld.WorldObjects == null) return;
             
-            // Create player states array using GetPlayerState() method
-            PlayerState[] playerStates = new PlayerState[networkPlayers.Count + 1];
-            playerStates[0] = LocalPlayer.GetPlayerState();
+            // Create player states array for changed players only
+            var changedPlayerStates = new List<PlayerState>();
             
-            int index = 1;
+            // Always include local player (they're always "changed" from their perspective)
+            if (LocalPlayer.HasChanged)
+            {
+                changedPlayerStates.Add(LocalPlayer.GetPlayerState());
+                LocalPlayer.ClearChangedFlag();
+            }
+            
+            // Add other players only if they've changed
             foreach (var entry in networkPlayers)
             {
                 var player = entry.Value.Player;
-                playerStates[index] = player.GetPlayerState();
-                index++;
-            }
-            
-            // Create casino machine states and coin states
-            var casinoMachineStates = GameWorld.WorldObjects.GetCasinoMachineStates();
-            var coinStates = GameWorld.WorldObjects.GetCoinStates();
-            
-            // Send to all clients individually
-            foreach (var entry in networkPlayers)
-            {
-                SendPacket(new PlayerReceiveUpdatePacket
+                if (player.HasChanged)
                 {
-                    playerStates = playerStates,
-                    casinoMachineStates = casinoMachineStates,
-                    coinStates = coinStates
-                }, entry.Value.Peer, DeliveryMethod.Unreliable);
+                    changedPlayerStates.Add(player.GetPlayerState());
+                    player.ClearChangedFlag();
+                }
             }
+            
+            // Send individual updates for platforms and casino machines (coins handle their own physics)
+            var platformUpdates = GameWorld.WorldObjects.GetChangedPlatformUpdates();
+            var casinoMachineUpdates = GameWorld.WorldObjects.GetChangedCasinoMachineUpdates();
+            
+            // Clear change flags for world objects after retrieving changed states
+            GameWorld.WorldObjects.ClearAllChangedFlags();
+            
+            // Send player states to all clients
+            if (changedPlayerStates.Count > 0)
+            {
+                foreach (var entry in networkPlayers)
+                {
+                    SendPacket(new PlayerReceiveUpdatePacket
+                    {
+                        playerStates = changedPlayerStates.ToArray()
+                    }, entry.Value.Peer, DeliveryMethod.Unreliable);
+                }
+            }
+            
+            // Send individual platform updates
+            foreach (var (id, state) in platformUpdates)
+            {
+                var platformUpdatePacket = new PlatformUpdatePacket
+                {
+                    platformId = id,
+                    platformState = state
+                };
+                
+                foreach (var entry in networkPlayers)
+                {
+                    SendPacket(platformUpdatePacket, entry.Value.Peer, DeliveryMethod.Unreliable);
+                }
+            }
+            
+            // Send individual casino machine updates
+            foreach (var (id, state) in casinoMachineUpdates)
+            {
+                var casinoMachineUpdatePacket = new CasinoMachineUpdatePacket
+                {
+                    machineId = id,
+                    machineState = state
+                };
+                
+                foreach (var entry in networkPlayers)
+                {
+                    SendPacket(casinoMachineUpdatePacket, entry.Value.Peer, DeliveryMethod.Unreliable);
+                }
+            }
+            
+            // Coins handle their own physics deterministically - no network updates needed
         }
         
         // Network event handlers
@@ -384,7 +476,45 @@ namespace CasinoRoyale.Classes.GameStates
             // Process casino machine states for coin spawning requests
             if (packet.casinoMachineStates != null && packet.casinoMachineStates.Length > 0)
             {
-                GameWorld.WorldObjects.ProcessCasinoMachineStates(packet.casinoMachineStates);
+                Logger.Info($"HOST DEBUG: Received {packet.casinoMachineStates.Length} casino machine states from client");
+                var results = GameWorld.WorldObjects.ProcessCasinoMachineStates(packet.casinoMachineStates);
+                
+                // Notify all clients about spawned coins and send casino machine state updates
+                foreach (var (machineNum, requestId, coin, wasSuccessful) in results)
+                {
+                    if (wasSuccessful && coin != null)
+                    {
+                        var coinSpawnedPacket = new CoinSpawnedPacket
+                        {
+                            coinState = coin.GetState()
+                        };
+                        
+                        // Send to all clients
+                        foreach (var entry in networkPlayers)
+                        {
+                            SendPacket(coinSpawnedPacket, entry.Value.Peer, DeliveryMethod.ReliableOrdered);
+                        }
+                        
+                        // Send casino machine state update to reset client's spawnedCoin flag
+                        var machine = GameWorld.WorldObjects.CasinoMachines.FirstOrDefault(m => m.GetState().machineNum == machineNum);
+                        if (machine != null)
+                        {
+                            var casinoMachineUpdatePacket = new CasinoMachineUpdatePacket
+                            {
+                                machineId = machineNum,
+                                machineState = machine.GetState()
+                            };
+                            
+                            // Send to all clients
+                            foreach (var entry in networkPlayers)
+                            {
+                                SendPacket(casinoMachineUpdatePacket, entry.Value.Peer, DeliveryMethod.ReliableOrdered);
+                            }
+                            
+                            Logger.Info($"HOST DEBUG: Sent casino machine state update for machine {machineNum} to reset spawnedCoin flag");
+                        }
+                    }
+                }
             }
         }
         
@@ -439,6 +569,7 @@ namespace CasinoRoyale.Classes.GameStates
                 joinPacket.playerStandardSpeed,
                 new Rectangle(spawnPosition.ToPoint(), new Point(PlayerTexture.Bounds.Width, PlayerTexture.Bounds.Height)),
                 false);
+            newPlayer.MarkAsNewPlayer();
             
             // Initialize interpolation targets
             newPlayer.InitializeTargets();
@@ -470,16 +601,7 @@ namespace CasinoRoyale.Classes.GameStates
                     SendPacket(new PlayerJoinedGamePacket
                     {
                         new_player_username = newPlayer.GetUsername(),
-                        new_player_state = new PlayerState
-                        {
-                            pid = newPlayer.GetID(),
-                            ges = new GameEntityState
-                            {
-                                awake = true,
-                                coords = newPlayer.Coords,
-                                velocity = newPlayer.Velocity
-                            }
-                        },
+                        new_player_state = newPlayer.GetPlayerState(),
                         new_player_hitbox = newPlayer.Hitbox,
                         new_player_mass = joinPacket.playerMass,
                         new_player_initialJumpVelocity = joinPacket.playerInitialJumpVelocity,
@@ -488,6 +610,14 @@ namespace CasinoRoyale.Classes.GameStates
                 }
             }
         }
+        
+        private void OnCoinSpawned(CoinSpawnedPacket packet, NetPeer peer)
+        {
+            // This handler is for when the host receives a coin spawn notification
+            // In most cases, the host creates coins directly, but this could be used for relay scenarios
+            Console.WriteLine($"HOST DEBUG: Received CoinSpawnedPacket - CoinId: {packet.coinState.coinId}");
+        }
+        
         
         private void OnRelayError(string errorMessage)
         {
@@ -515,16 +645,12 @@ namespace CasinoRoyale.Classes.GameStates
         
         private void SendJoinAccept(PlayableCharacter newPlayer, NetPeer peer)
         {
-            // Create platform states using GameWorldObjects
-            var platformStates = GameWorld.WorldObjects.GetPlatformStates();
-            
-            // Create casino machine states using GameWorldObjects
-            var casinoMachineStates = GameWorld.WorldObjects.GetCasinoMachineStates();
-            
             // Create player state using GetPlayerState() method
             var playerState = newPlayer.GetPlayerState();
             
-            // Send join acceptance packet
+            Console.WriteLine($"HOST DEBUG: Sending join accept - Coins: {GameWorld.WorldObjects.Coins.Count}, Casino machines: {GameWorld.WorldObjects.CasinoMachines.Count}");
+            
+            // Send join acceptance packet with casino machine states
             var joinAcceptPacket = new JoinAcceptPacket
             {
                 gameArea = GameWorld.GameArea,
@@ -532,12 +658,45 @@ namespace CasinoRoyale.Classes.GameStates
                 playerState = playerState,
                 playerVelocity = newPlayer.Velocity,
                 otherPlayerStates = [], // TODO: Add other players
-                platformStates = platformStates,
-                casinoMachineStates = casinoMachineStates,
-                coinStates = GameWorld.WorldObjects.GetCoinStates()
+                coinStates = GameWorld.WorldObjects.GetCoinStates(),
+                casinoMachineStates = GameWorld.WorldObjects.GetCasinoMachineStates()
             };
             
             SendPacket(joinAcceptPacket, peer, DeliveryMethod.ReliableOrdered);
+            
+            // Send game world state separately to avoid packet size issues
+            SendGameWorldState(peer);
+        }
+        
+        private void SendGameWorldState(NetPeer peer)
+        {
+            Console.WriteLine($"HOST DEBUG: Sending initial game world state to peer {peer}");
+            
+            // Send all platforms individually
+            var platformStates = GameWorld.WorldObjects.GetPlatformStates();
+            for (uint i = 0; i < platformStates.Length; i++)
+            {
+                var platformUpdate = new PlatformUpdatePacket
+                {
+                    platformId = i,
+                    platformState = platformStates[i]
+                };
+                SendPacket(platformUpdate, peer, DeliveryMethod.ReliableOrdered);
+            }
+            
+            // Send all casino machines individually
+            var casinoMachineStates = GameWorld.WorldObjects.GetCasinoMachineStates();
+            for (uint i = 0; i < casinoMachineStates.Length; i++)
+            {
+                var machineUpdate = new CasinoMachineUpdatePacket
+                {
+                    machineId = i,
+                    machineState = casinoMachineStates[i]
+                };
+                SendPacket(machineUpdate, peer, DeliveryMethod.ReliableOrdered);
+            }
+            
+            Console.WriteLine($"HOST DEBUG: Sent {platformStates.Length} platforms and {casinoMachineStates.Length} casino machines individually");
         }
         
         // Public methods for lobby code access
@@ -716,6 +875,38 @@ namespace CasinoRoyale.Classes.GameStates
         {
             Logger.LogNetwork("HOST", $"Connection request from {request.RemoteEndPoint}");
             request.Accept();
+        }
+        
+        // Handle casino machine interaction for host - use same system as client
+        public void TryInteractWithCasinoMachine()
+        {
+            if (LocalPlayer == null || GameWorld?.WorldObjects == null) return;
+            
+            Logger.Info($"HOST DEBUG: TryInteractWithCasinoMachine called - Player hitbox: {LocalPlayer.Hitbox}, Casino machines count: {GameWorld.WorldObjects.CasinoMachines.Count}");
+            
+            // Check if player is colliding with any casino machine
+            foreach (var machine in GameWorld.WorldObjects.CasinoMachines)
+            {
+                Logger.Info($"HOST DEBUG: Checking machine {machine.GetState().machineNum} - Hitbox: {machine.Hitbox}, Intersects: {LocalPlayer.Hitbox.Intersects(machine.Hitbox)}");
+                
+                if (LocalPlayer.Hitbox.Intersects(machine.Hitbox))
+                {
+                    // Check if machine hasn't already spawned a coin
+                    if (!machine.SpawnedCoin)
+                    {
+                        // Set the spawnedCoin flag to request coin spawning (same as client)
+                        machine.SpawnedCoin = true;
+                        machine.MarkAsChanged();
+                        
+                        Logger.Info($"HOST DEBUG: Set spawnedCoin=true for machine {machine.GetState().machineNum}");
+                    }
+                    else
+                    {
+                        Logger.Info($"HOST DEBUG: Machine {machine.GetState().machineNum} already spawned a coin");
+                    }
+                    break; // Only interact with one machine at a time
+                }
+            }
         }
     }
 }
