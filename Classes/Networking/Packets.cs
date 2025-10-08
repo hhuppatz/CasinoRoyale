@@ -217,30 +217,6 @@ public class PlayerJoinedGamePacket : INetSerializable {
         }
     }
 
-    // Packet for notifying clients that a coin was spawned from a casino machine
-    public class CoinSpawnedFromMachinePacket : INetSerializable {
-        public uint machineNum { get; set; }
-        public uint requestId { get; set; }
-        public CoinState coinState { get; set; }
-        public bool wasSuccessful { get; set; }
-        
-        public void Serialize(NetDataWriter writer)
-        {
-            writer.Put(machineNum);
-            writer.Put(requestId);
-            coinState.Serialize(writer);
-            writer.Put(wasSuccessful);
-        }
-        
-        public void Deserialize(NetDataReader reader)
-        {
-            machineNum = reader.GetUInt();
-            requestId = reader.GetUInt();
-            coinState = new CoinState();
-            coinState.Deserialize(reader);
-            wasSuccessful = reader.GetBool();
-        }
-    }
 
     // Individual object update packets - much more efficient
     public class PlatformUpdatePacket : INetSerializable

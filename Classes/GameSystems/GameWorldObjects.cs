@@ -579,19 +579,6 @@ namespace CasinoRoyale.Classes.GameSystems
             return coinTex;
         }
         
-        // Get next coin ID for client-side coin creation
-        public uint GetNextCoinId()
-        {
-            return nextCoinId++;
-        }
         
-        // Method to ensure proper coin ID synchronization
-        public void EnsureCoinIdSync(uint coinId)
-        {
-            if (coinId >= nextCoinId)
-            {
-                nextCoinId = coinId + 1;
-            }
-        }
     }
 }

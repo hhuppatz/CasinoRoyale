@@ -615,7 +615,7 @@ namespace CasinoRoyale.Classes.GameStates
         {
             // This handler is for when the host receives a coin spawn notification
             // In most cases, the host creates coins directly, but this could be used for relay scenarios
-            Console.WriteLine($"HOST DEBUG: Received CoinSpawnedPacket - CoinId: {packet.coinState.coinId}");
+            Logger.Info($"HOST DEBUG: Received CoinSpawnedPacket - CoinId: {packet.coinState.coinId}");
         }
         
         
@@ -648,7 +648,7 @@ namespace CasinoRoyale.Classes.GameStates
             // Create player state using GetPlayerState() method
             var playerState = newPlayer.GetPlayerState();
             
-            Console.WriteLine($"HOST DEBUG: Sending join accept - Coins: {GameWorld.WorldObjects.Coins.Count}, Casino machines: {GameWorld.WorldObjects.CasinoMachines.Count}");
+            Logger.Info($"HOST DEBUG: Sending join accept - Coins: {GameWorld.WorldObjects.Coins.Count}, Casino machines: {GameWorld.WorldObjects.CasinoMachines.Count}");
             
             // Send join acceptance packet with casino machine states
             var joinAcceptPacket = new JoinAcceptPacket
@@ -670,7 +670,7 @@ namespace CasinoRoyale.Classes.GameStates
         
         private void SendGameWorldState(NetPeer peer)
         {
-            Console.WriteLine($"HOST DEBUG: Sending initial game world state to peer {peer}");
+            Logger.Info($"HOST DEBUG: Sending initial game world state to peer {peer}");
             
             // Send all platforms individually
             var platformStates = GameWorld.WorldObjects.GetPlatformStates();
@@ -696,7 +696,7 @@ namespace CasinoRoyale.Classes.GameStates
                 SendPacket(machineUpdate, peer, DeliveryMethod.ReliableOrdered);
             }
             
-            Console.WriteLine($"HOST DEBUG: Sent {platformStates.Length} platforms and {casinoMachineStates.Length} casino machines individually");
+            Logger.Info($"HOST DEBUG: Sent {platformStates.Length} platforms and {casinoMachineStates.Length} casino machines individually");
         }
         
         // Public methods for lobby code access
