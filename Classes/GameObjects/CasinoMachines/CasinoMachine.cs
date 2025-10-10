@@ -4,10 +4,11 @@ using Microsoft.Xna.Framework.Graphics;
 using CasinoRoyale.Classes.GameObjects.Interfaces;
 using CasinoRoyale.Classes.Networking;
 using System;
+using CasinoRoyale.Classes.GameObjects.Items;
 
-namespace CasinoRoyale.Classes.GameObjects.CasinoMachines
-{
-    public class CasinoMachine(uint machineNum, Texture2D tex, Vector2 coords) : IObject, IHitbox
+namespace CasinoRoyale.Classes.GameObjects.CasinoMachines;
+
+public class CasinoMachine(uint machineNum, Texture2D tex, Vector2 coords) : IObject, IHitbox
 {
     private readonly Texture2D tex = tex;
     private readonly uint machineNum = machineNum;
@@ -36,7 +37,7 @@ namespace CasinoRoyale.Classes.GameObjects.CasinoMachines
         };
     }
 
-    public Coin SpawnCoin(uint coinId, Texture2D coinTex)
+    public Item SpawnCoin(uint coinId, Texture2D coinTex)
     {
         Random random = new();
         bool isLeft = random.Next(0, 2) == 0;
@@ -44,7 +45,7 @@ namespace CasinoRoyale.Classes.GameObjects.CasinoMachines
         Vector2 spawnVel = new((float)random.NextDouble() * 20 + 30, -80);
 
         if (isLeft) spawnVel.X = - spawnVel.X;
-        return new Coin(coinId, coinTex, spawnPos, spawnVel);
+        return new Item(coinId, ItemType.COIN, coinTex, spawnPos, spawnVel);
     }
 
     public void MarkAsChanged()
@@ -87,5 +88,4 @@ public struct CasinoMachineState : INetSerializable
         spawnedCoin = reader.GetBool();
         requestId = reader.GetUInt();
     }
-}
 }

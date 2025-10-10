@@ -16,8 +16,7 @@ namespace CasinoRoyale.Classes.MonogameMethodExtensions
                                 null,
                                 Color.White,
                                 0.0f,
-                                Vector2.Zero,
-                                //new Vector2(drawable.GetTex().Bounds.Width/2, drawable.GetTex().Bounds.Height/2),
+                                Vector2.Zero,  // Top-left origin to match hitbox positioning
                                 CasinoRoyale.Utils.Resolution.ratio,
                                 0,
                                 0);

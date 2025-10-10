@@ -4,20 +4,28 @@ using Microsoft.Xna.Framework;
 using CasinoRoyale.Classes.GameObjects.Interfaces;
 using CasinoRoyale.Classes.Networking;
 
-namespace CasinoRoyale.Classes.GameObjects
+namespace CasinoRoyale.Classes.GameObjects;
+
+public abstract class GameEntity : IObject, IHitbox, IMovement
 {
-    public class GameEntity : IObject, IHitbox, IMovement
-{
-    private bool awake;
     private event EventHandler<EntityMovementEventArgs> MovementEvent;
+    
+    private bool awake;
+    private bool destroyed = false;
+    public bool Destroyed { get => destroyed; set { destroyed = value; MarkAsChanged(); } }
+    
     private Vector2 _coords;
     public Vector2 Coords { get => _coords; set { _coords = value; MarkAsChanged(); OnMovement(new EntityMovementEventArgs { coords = _coords });}  }
+    
     private Vector2 _velocity;
     public Vector2 Velocity { get => _velocity; set { _velocity = value; MarkAsChanged(); } }
+
     private Rectangle _hitbox;
     public Rectangle Hitbox { get => _hitbox; set { _hitbox = value; MarkAsChanged(); } }
+
     private float mass;
     public float Mass { get => mass; set { mass = value; MarkAsChanged(); } }
+
     private bool _hasChanged = false;
     public bool HasChanged { get => _hasChanged; private set => _hasChanged = value; }
 
@@ -54,6 +62,12 @@ namespace CasinoRoyale.Classes.GameObjects
     public void SleepEntity()
     {
         awake = false;
+        MarkAsChanged();
+    }
+
+    public void DestroyEntity()
+    {
+        destroyed = true;
         MarkAsChanged();
     }
 
@@ -102,8 +116,7 @@ public struct GameEntityState : INetSerializable
     }
 }
 
-    public class EntityMovementEventArgs : EventArgs
-    {
-        public Vector2 coords { get; set; }
-    }
+public class EntityMovementEventArgs : EventArgs
+{
+    public Vector2 coords { get; set; }
 }

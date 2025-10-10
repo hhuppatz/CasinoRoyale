@@ -15,13 +15,13 @@ namespace CasinoRoyale.Classes.GameObjects
     }
 
     // Only allow one instance of Main Camera to exist (le singleton)
-    private static readonly Lazy<MainCamera> lazy = new Lazy<MainCamera>(() => new MainCamera());
+    private static readonly Lazy<MainCamera> lazy = new(() => new MainCamera());
     public static MainCamera Instance { get { return lazy.Value; }}
 
     public void InitMainCamera(GameWindow _window, PlayableCharacter player)
     {
         coords = player.Coords;
-        offset = new Vector2(_window.ClientBounds.Width/2, _window.ClientBounds.Height/2 + 150);
+        offset = new Vector2(_window.ClientBounds.Width/2, _window.ClientBounds.Height/2 + 130);
     }
 
     public void MoveToFollowPlayer(PlayableCharacter player)

@@ -53,7 +53,7 @@ public class PhysicsSystem
     }
 
     // Generic physics update method that works with any object that has a hitbox
-    public static PhysicsUpdateResult UpdatePhysics(Rectangle gameArea, GameWorldObjects gameWorldObjects, 
+    public static PhysicsUpdateResult UpdatePhysics(Rectangle gameArea, List<Platform> platforms, 
         Vector2 currentPosition, Vector2 currentVelocity, Rectangle hitbox, float mass, float dt)
     {
         var result = new PhysicsUpdateResult
@@ -67,8 +67,8 @@ public class PhysicsSystem
 
         // Apply gravity if not grounded
         // Create a hitbox positioned at the current position
-        Rectangle positionedHitbox = new Rectangle((int)currentPosition.X, (int)currentPosition.Y, hitbox.Width, hitbox.Height);
-        bool isGrounded = IsObjectGrounded(gameArea, gameWorldObjects, positionedHitbox);
+        Rectangle positionedHitbox = new((int)currentPosition.X, (int)currentPosition.Y, hitbox.Width, hitbox.Height);
+        bool isGrounded = IsObjectGrounded(gameArea, platforms, positionedHitbox);
         result.isGrounded = isGrounded;
         
         if (!isGrounded)
@@ -80,7 +80,7 @@ public class PhysicsSystem
         Vector2 attemptedMovement = result.newVelocity * dt;
         
         // Check and resolve collisions
-        var collisionResult = ResolveCollisions(gameWorldObjects, currentPosition, positionedHitbox, attemptedMovement);
+        var collisionResult = ResolveCollisions(platforms, currentPosition, positionedHitbox, attemptedMovement);
         result.newPosition += collisionResult.movement;
         result.horizontalBlocked = collisionResult.horizontalBlocked;
         result.verticalBlocked = collisionResult.verticalBlocked;
@@ -102,7 +102,7 @@ public class PhysicsSystem
                 result.newVelocity = new Vector2(result.newVelocity.X, 0);
                 
                 // Ensure object is positioned above any platform it landed on
-                result.newPosition = EnsureObjectAbovePlatforms(gameWorldObjects, result.newPosition, positionedHitbox);
+                result.newPosition = EnsureObjectAbovePlatforms(platforms, result.newPosition, positionedHitbox);
             }
         }
         
@@ -113,16 +113,16 @@ public class PhysicsSystem
     }
 
     // Legacy method for backward compatibility with PlayableCharacter
-    public static void EnforceMovementRules(Rectangle gameArea, GameWorldObjects gameWorldObjects, PlayableCharacter player, float dt)
+    public static void EnforceMovementRules(Rectangle gameArea, List<Platform> platforms, PlayableCharacter player, float dt)
     {
-        var physicsResult = UpdatePhysics(gameArea, gameWorldObjects, player.Coords, player.Velocity, player.Hitbox, player.Mass, dt);
+        var physicsResult = UpdatePhysics(gameArea, platforms, player.Coords, player.Velocity, player.Hitbox, player.Mass, dt);
         
         // Apply the physics results to the player
         player.Coords = physicsResult.newPosition;
         player.Velocity = physicsResult.newVelocity;
     }
     
-    private static CollisionResult ResolveCollisions(GameWorldObjects gameWorldObjects, Vector2 currentPosition, Rectangle hitbox, Vector2 attemptedMovement)
+    private static CollisionResult ResolveCollisions(List<Platform> platforms, Vector2 currentPosition, Rectangle hitbox, Vector2 attemptedMovement)
     {
         // Simple and reliable collision resolution using step-by-step movement
         Vector2 resolvedMovement = Vector2.Zero;
@@ -139,7 +139,7 @@ public class PhysicsSystem
         
         // Check if diagonal movement causes any collision
         bool hasDiagonalCollision = false;
-        foreach (var platform in gameWorldObjects.Platforms ?? [])
+        foreach (var platform in platforms ?? [])
         {
             if (diagonalTestHitbox.Intersects(platform.Hitbox))
             {
@@ -158,7 +158,7 @@ public class PhysicsSystem
         if (attemptedMovement.X != 0)
         {
             float originalX = attemptedMovement.X;
-            resolvedMovement.X = ResolveAxisMovement(gameWorldObjects, currentPosition, hitbox, attemptedMovement.X, 0f, true);
+            resolvedMovement.X = ResolveAxisMovement(platforms, currentPosition, hitbox, attemptedMovement.X, 0f, true);
             
             // Check if horizontal movement was blocked
             if (Math.Abs(resolvedMovement.X) < Math.Abs(originalX))
@@ -171,7 +171,7 @@ public class PhysicsSystem
         if (attemptedMovement.Y != 0)
         {
             float originalY = attemptedMovement.Y;
-            resolvedMovement.Y = ResolveAxisMovement(gameWorldObjects, currentPosition, hitbox, resolvedMovement.X, attemptedMovement.Y, false);
+            resolvedMovement.Y = ResolveAxisMovement(platforms, currentPosition, hitbox, resolvedMovement.X, attemptedMovement.Y, false);
             
             // Check if vertical movement was blocked
             if (Math.Abs(resolvedMovement.Y) < Math.Abs(originalY))
@@ -183,7 +183,7 @@ public class PhysicsSystem
         return new CollisionResult(resolvedMovement, horizontalBlocked, verticalBlocked);
     }
     
-    private static float ResolveAxisMovement(GameWorldObjects gameWorldObjects, Vector2 currentPosition, Rectangle hitbox, float xMovement, float yMovement, bool isHorizontal)
+    private static float ResolveAxisMovement(List<Platform> platforms, Vector2 currentPosition, Rectangle hitbox, float xMovement, float yMovement, bool isHorizontal)
     {
         float movementDistance = isHorizontal ? xMovement : yMovement;
         
@@ -191,7 +191,6 @@ public class PhysicsSystem
         if (Math.Abs(movementDistance) < 0.001f) return 0f;
         
         // Get all potential colliders (platforms)
-        var platforms = gameWorldObjects.Platforms;
         if (platforms == null || platforms.Count == 0) return movementDistance;
         
         // Check if the full movement is safe first
@@ -283,15 +282,15 @@ public class PhysicsSystem
         return currentMovement;
     }
 
-    public static void EnforcePlayerGravity(Rectangle gameArea, GameWorldObjects gameWorldObjects, PlayableCharacter player, float dt)
+    public static void EnforcePlayerGravity(Rectangle gameArea, List<Platform> platforms, PlayableCharacter player, float dt)
     {
-        if (!IsPlayerGrounded(gameArea, gameWorldObjects, player))
+        if (!IsPlayerGrounded(gameArea, platforms, player))
         {
             player.Velocity += new Vector2(0, CasinoRoyale.Classes.GameSystems.PhysicsSystem.Instance.GRAVITY * player.Mass * dt);
         }
     }
     
-    public static bool IsObjectGrounded(Rectangle gameArea, GameWorldObjects gameWorldObjects, Rectangle hitbox)
+    public static bool IsObjectGrounded(Rectangle gameArea, List<Platform> platforms, Rectangle hitbox)
     {
         // Check if object is at the bottom of the game area (ground)
         bool atBottom = hitbox.Bottom >= gameArea.Bottom;
@@ -308,7 +307,7 @@ public class PhysicsSystem
         );
         
         // Check if object is grounded on a platform
-        foreach (Platform platform in gameWorldObjects.Platforms)
+        foreach (Platform platform in platforms)
         {
             if (belowObjectHitbox.Intersects(platform.Hitbox))
             {
@@ -319,12 +318,12 @@ public class PhysicsSystem
         return false;
     }
     
-    private static Vector2 EnsureObjectAbovePlatforms(GameWorldObjects gameWorldObjects, Vector2 position, Rectangle hitbox)
+    private static Vector2 EnsureObjectAbovePlatforms(List<Platform> platforms, Vector2 position, Rectangle hitbox)
     {
         Vector2 newPosition = position;
         
         // Check all platforms and ensure object is positioned above any that they intersect with
-        foreach (var platform in gameWorldObjects.Platforms)
+        foreach (var platform in platforms)
         {
             Rectangle testHitbox = new((int)newPosition.X, (int)newPosition.Y, hitbox.Width, hitbox.Height);
             if (testHitbox.Intersects(platform.Hitbox))
@@ -351,9 +350,9 @@ public class PhysicsSystem
     }
     
     // Legacy method for backward compatibility
-    public static bool IsPlayerGrounded(Rectangle gameArea, GameWorldObjects gameWorldObjects, PlayableCharacter player)
+    public static bool IsPlayerGrounded(Rectangle gameArea, List<Platform> platforms, PlayableCharacter player)
     {
-        return IsObjectGrounded(gameArea, gameWorldObjects, player.Hitbox);
+        return IsObjectGrounded(gameArea, platforms, player.Hitbox);
     }
     
 }

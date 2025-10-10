@@ -7,6 +7,9 @@ using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using CasinoRoyale.Classes.Networking;
 using CasinoRoyale.Classes.GameSystems;
+using CasinoRoyale.Classes.GameObjects.Platforms;
+using CasinoRoyale.Classes.GameObjects.CasinoMachines;
+using CasinoRoyale.Classes.GameObjects.Items;
 
 namespace CasinoRoyale.Classes.GameObjects
 {
@@ -79,27 +82,27 @@ namespace CasinoRoyale.Classes.GameObjects
         UpdateJump(m_playerAttemptedJump, gameWorld);
 
         // Enforce movement rules from physics system (this will handle collision detection)
-        PhysicsSystem.EnforceMovementRules(gameWorld.GameArea, gameWorld.WorldObjects, this, dt);
+        PhysicsSystem.EnforceMovementRules(gameWorld.GameArea, gameWorld.WorldObjects.GetPlatforms(), this, dt);
     }
 
     public void UpdateJump(bool m_playerAttemptedJump, GameWorld gameWorld)
     {
         // Deal with player jumping - only apply jump velocity once when jump starts
-        if (m_playerAttemptedJump && !InJump && PhysicsSystem.IsPlayerGrounded(gameWorld.GameArea, gameWorld.WorldObjects, this))
+        if (m_playerAttemptedJump && !InJump && PhysicsSystem.IsPlayerGrounded(gameWorld.GameArea, gameWorld.WorldObjects.GetPlatforms(), this))
         {
             // Start jump with initial velocity
             InJump = true;
             Velocity = new Vector2(0, -InitialJumpVelocity);
         }
         // Check if player has landed after falling (end jump state)
-        else if (InJump && Velocity.Y >= 0 && PhysicsSystem.IsPlayerGrounded(gameWorld.GameArea, gameWorld.WorldObjects, this)) InJump = false;
+        else if (InJump && Velocity.Y >= 0 && PhysicsSystem.IsPlayerGrounded(gameWorld.GameArea, gameWorld.WorldObjects.GetPlatforms(), this)) InJump = false;
 
     }
     
     private void TryInteractWithCasinoMachine(GameWorld gameWorld)
     {
         // Check if player is colliding with any casino machine
-        foreach (var machine in gameWorld.WorldObjects.CasinoMachines)
+        foreach (var machine in gameWorld.WorldObjects.GetCasinoMachines())
         {
             if (Hitbox.Intersects(machine.Hitbox))
             {
@@ -120,6 +123,7 @@ namespace CasinoRoyale.Classes.GameObjects
     {
         Coords = playerState.ges.coords;
         Velocity = playerState.ges.velocity;
+        Mass = playerState.ges.mass;
         if (playerState.ges.awake)
             AwakenEntity();
         else
@@ -216,7 +220,6 @@ namespace CasinoRoyale.Classes.GameObjects
             pid = pid,
             username = username,
             ges = GetEntityState(),
-            mass = Mass,
             initialJumpVelocity = initialJumpVelocity,
             maxRunSpeed = standardSpeed
         };
@@ -235,7 +238,6 @@ public struct PlayerState : INetSerializable
     public uint pid;
     public string username;
     public GameEntityState ges;
-    public float mass;
     public float initialJumpVelocity;
     public float maxRunSpeed;
 
@@ -245,7 +247,6 @@ public struct PlayerState : INetSerializable
         writer.Put(pid);
         writer.Put(username);
         writer.Put(ges);
-        writer.Put(mass);
         writer.Put(initialJumpVelocity);
         writer.Put(maxRunSpeed);
     }
@@ -256,7 +257,6 @@ public struct PlayerState : INetSerializable
         pid = reader.GetUInt();
         username = reader.GetString();
         ges = reader.GetGES();
-        mass = reader.GetFloat();
         initialJumpVelocity = reader.GetFloat();
         maxRunSpeed = reader.GetFloat();
     }

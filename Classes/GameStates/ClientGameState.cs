@@ -13,6 +13,7 @@ using CasinoRoyale.Utils;
 using CasinoRoyale.Classes.GameSystems;
 using CasinoRoyale.Classes.GameObjects.CasinoMachines;
 using CasinoRoyale.Classes.GameObjects.Platforms;
+using CasinoRoyale.Classes.GameObjects.Items;
 
 namespace CasinoRoyale.Classes.GameStates
 {
@@ -45,13 +46,9 @@ namespace CasinoRoyale.Classes.GameStates
         {
             if (LocalPlayer == null || GameWorld?.WorldObjects == null) return;
             
-            Logger.Info($"CLIENT DEBUG: TryInteractWithCasinoMachine called - Player hitbox: {LocalPlayer.Hitbox}, Casino machines count: {GameWorld.WorldObjects.CasinoMachines.Count}");
-            
             // Check if player is colliding with any casino machine
-            foreach (var machine in GameWorld.WorldObjects.CasinoMachines)
+            foreach (var machine in GameWorld.WorldObjects.GetCasinoMachines())
             {
-                Logger.Info($"CLIENT DEBUG: Checking machine {machine.GetState().machineNum} - Hitbox: {machine.Hitbox}, Intersects: {LocalPlayer.Hitbox.Intersects(machine.Hitbox)}");
-                
                 if (LocalPlayer.Hitbox.Intersects(machine.Hitbox))
                 {
                     // Check if machine hasn't already spawned a coin
@@ -60,8 +57,6 @@ namespace CasinoRoyale.Classes.GameStates
                         // Set the spawnedCoin flag to request coin spawning from host
                         machine.SpawnedCoin = true;
                         machine.MarkAsChanged();
-                        
-                        Logger.Info($"CLIENT DEBUG: Set spawnedCoin=true for machine {machine.GetState().machineNum}, will be sent to host");
                     }
                     else
                     {
@@ -76,10 +71,8 @@ namespace CasinoRoyale.Classes.GameStates
         // Get changed casino machine states (no longer need request IDs)
         private CasinoMachineState[] GetChangedCasinoMachineStates()
         {
-            var changedMachines = GameWorld.WorldObjects.CasinoMachines.Where(m => m.HasChanged).ToList();
+            var changedMachines = GameWorld.WorldObjects.GetCasinoMachines().Where(m => m.HasChanged).ToList();
             var casinoMachineStates = new List<CasinoMachineState>();
-            
-            Logger.Info($"CLIENT DEBUG: GetChangedCasinoMachineStates - Found {changedMachines.Count} changed machines out of {GameWorld.WorldObjects.CasinoMachines.Count} total");
             
             foreach (var machine in changedMachines)
             {
@@ -89,15 +82,14 @@ namespace CasinoRoyale.Classes.GameStates
             }
             
             Logger.Info($"CLIENT DEBUG: Returning {casinoMachineStates.Count} casino machine states");
-            return casinoMachineStates.ToArray();
+            return [.. casinoMachineStates];
         }
 
         public override void Initialize()
         {
             base.Initialize();
             
-            // Initialize GameWorld
-            GameWorld = new GameWorld(GameProperties, Content);
+            // Note: GameWorld will be initialized in LoadContent() after SpriteBatch is created
             
             // Initialize relay manager (using LiteNetLib relay)
             string relayAddress = GetStringProperty("relay.server.address", "127.0.0.1");
@@ -114,7 +106,7 @@ namespace CasinoRoyale.Classes.GameStates
             packetProcessor.RegisterNestedType<PlayerState>();
             packetProcessor.RegisterNestedType<PlatformState>();
             packetProcessor.RegisterNestedType<CasinoMachineState>();
-            packetProcessor.RegisterNestedType<CoinState>();
+            packetProcessor.RegisterNestedType<ItemState>();
             
             // Set up packet processing - register both with and without NetPeer for relay compatibility
             packetProcessor.SubscribeReusable<PlayerReceiveUpdatePacket, NetPeer>(OnPlayerStatesUpdateReceived);
@@ -130,12 +122,12 @@ namespace CasinoRoyale.Classes.GameStates
             packetProcessor.SubscribeReusable<CasinoMachineUpdatePacket>(p => OnCasinoMachineUpdateReceived(p, null));
             
             
-            packetProcessor.SubscribeReusable<CoinRemovedPacket, NetPeer>(OnCoinRemovedReceived);
-            packetProcessor.SubscribeReusable<CoinRemovedPacket>(p => OnCoinRemovedReceived(p, null));
+            packetProcessor.SubscribeReusable<ItemRemovedPacket, NetPeer>(OnCoinRemovedReceived);
+            packetProcessor.SubscribeReusable<ItemRemovedPacket>(p => OnCoinRemovedReceived(p, null));
             
             
-            packetProcessor.SubscribeReusable<CoinSpawnedPacket, NetPeer>(OnCoinSpawned);
-            packetProcessor.SubscribeReusable<CoinSpawnedPacket>(p => OnCoinSpawned(p, null));
+            packetProcessor.SubscribeReusable<ItemSpawnedPacket, NetPeer>(OnCoinSpawned);
+            packetProcessor.SubscribeReusable<ItemSpawnedPacket>(p => OnCoinSpawned(p, null));
             
             
             packetProcessor.SubscribeReusable<PlayerJoinedGamePacket, NetPeer>(OnPlayerJoin);
@@ -158,20 +150,14 @@ namespace CasinoRoyale.Classes.GameStates
             {
                 base.LoadContent();
 
-                // Load player texture using GameWorld
-                if (GameWorld == null)
-                {
-                    Logger.Error("GameWorld is null in LoadContent()!");
-                    return;
-                }
+                // Initialize GameWorld now that SpriteBatch is available
+                GameWorld = new GameWorld(GameProperties, Content, SpriteBatch, MainCamera, Resolution.ratio);
                 
                 string playerImageName = GameProperties.get("player.image", "ball");
                 Logger.Info($"Loading player texture: {playerImageName}");
                 PlayerTexture = Content.Load<Texture2D>(playerImageName);
                 
-                Logger.Info($"CLIENT DEBUG: Before first InitializeGameWorld - Coins: {GameWorld.WorldObjects.Coins.Count}");
-                GameWorld.InitializeGameWorld(Content, PlayerOrigin);
-                Logger.Info($"CLIENT DEBUG: After first InitializeGameWorld - Coins: {GameWorld.WorldObjects.Coins.Count}");
+                GameWorld.InitializeGameWorld(PlayerOrigin);
                 
                 // Create local player
                 CreateLocalPlayer();
@@ -273,7 +259,7 @@ namespace CasinoRoyale.Classes.GameStates
             SpriteBatch.Begin();
             
             // Draw game world objects
-            GameWorld.DrawGameObjects(SpriteBatch, MainCamera, ratio);
+            GameWorld.DrawGameObjects();
             
             // Draw local player
             if (LocalPlayer != null)
@@ -414,7 +400,7 @@ namespace CasinoRoyale.Classes.GameStates
                         PlayerTexture,
                         playerState.ges.coords,
                         playerState.ges.velocity,
-                        playerState.mass,
+                        playerState.ges.mass,
                         playerState.initialJumpVelocity,
                         playerState.maxRunSpeed,
                         new Rectangle(playerState.ges.coords.ToPoint(), new Point(PlayerTexture.Bounds.Width, PlayerTexture.Bounds.Height)),
@@ -433,23 +419,12 @@ namespace CasinoRoyale.Classes.GameStates
                     otherPlayer.AddBufferedState(playerState.ges.coords, playerState.ges.velocity, gameTime);
                 }
             }
-            
-            // Casino machine updates are now handled by individual CasinoMachineUpdatePacket
-            // This old logic is no longer needed
-            
-            // Coin updates are now handled by individual CoinUpdatePacket
-            // This old logic is no longer needed
         }
         
         private void OnJoinAcceptReceived(JoinAcceptPacket joinAccept, NetPeer peer)
         {
-            Logger.Info($"CLIENT DEBUG: Received JoinAcceptPacket - Coins: {joinAccept.coinStates?.Length ?? 0}, Casino machines: {joinAccept.casinoMachineStates?.Length ?? 0}");
-            Logger.Info($"========== OnJoinAcceptReceived called! Peer: {(peer == null ? "null (relay)" : peer.Address.ToString())} ==========");
-            
             // Set up game world
-            Logger.Info($"CLIENT DEBUG: Before second InitializeGameWorld - Coins: {GameWorld.WorldObjects.Coins.Count}");
-            GameWorld.InitializeGameWorld(Content, PlayerOrigin, joinAccept.gameArea);
-            Logger.Info($"CLIENT DEBUG: After second InitializeGameWorld - Coins: {GameWorld.WorldObjects.Coins.Count}");
+            GameWorld.InitializeGameWorld(PlayerOrigin, joinAccept.gameArea);
             
             // Create local player from player state
             var playerState = joinAccept.playerState;
@@ -459,7 +434,7 @@ namespace CasinoRoyale.Classes.GameStates
                 PlayerTexture,
                 playerState.ges.coords,
                 joinAccept.playerVelocity, // Use playerVelocity from packet
-                playerState.mass,
+                playerState.ges.mass,
                 playerState.initialJumpVelocity,
                 playerState.maxRunSpeed,
                 joinAccept.playerHitbox,
@@ -472,20 +447,8 @@ namespace CasinoRoyale.Classes.GameStates
             // Initialize camera AFTER creating player
             InitializeCamera();
             Logger.Info("Player created and camera initialized!");
-            
-            // Recreate coins from coin states
-            if (joinAccept.coinStates != null)
-            {
-                Logger.Info($"Client recreating {joinAccept.coinStates.Length} coins from join accept");
-                GameWorld.WorldObjects.RecreateCoinsFromStates(joinAccept.coinStates);
-            }
-            
-            // Recreate casino machines from casino machine states (override generated ones)
-            if (joinAccept.casinoMachineStates != null)
-            {
-                Logger.Info($"CLIENT DEBUG: Recreating {joinAccept.casinoMachineStates.Length} casino machines from host");
-                GameWorld.WorldObjects.RecreateCasinoMachinesFromStates(Content, joinAccept.casinoMachineStates);
-            }
+
+            GameWorld.InitializeGameWorldFromState(joinAccept);
             
             // Create other players from other player states
             foreach (var otherPlayerState in joinAccept.otherPlayerStates ?? [])
@@ -498,7 +461,7 @@ namespace CasinoRoyale.Classes.GameStates
                         PlayerTexture,
                         otherPlayerState.ges.coords,
                         joinAccept.playerVelocity, // Use playerVelocity from packet
-                        otherPlayerState.mass,
+                        otherPlayerState.ges.mass,
                         otherPlayerState.initialJumpVelocity,
                         otherPlayerState.maxRunSpeed,
                         joinAccept.playerHitbox,
@@ -511,11 +474,6 @@ namespace CasinoRoyale.Classes.GameStates
             connected = true;
             // For relay connections, peer is null, so use the relay server peer
             server = peer ?? relayManager.RelayServerPeer;
-            
-            Logger.LogNetwork("CLIENT", $"Player {LocalPlayer.GetID()} ({LocalPlayer.GetUsername()}) created");
-            Logger.LogNetwork("CLIENT", $"Game area: {GameWorld.GameArea}");
-            Logger.LogNetwork("CLIENT", $"Platforms: {GameWorld.WorldObjects.Platforms.Count}, Casino machines: {GameWorld.WorldObjects.CasinoMachines.Count}");
-            Logger.Info("Join process completed successfully - client is now fully connected!");
         }
         
         
@@ -535,37 +493,31 @@ namespace CasinoRoyale.Classes.GameStates
             GameWorld.WorldObjects.UpdateCasinoMachineById(packet.machineId, packet.machineState);
         }
 
-
-        private void OnCoinRemovedReceived(CoinRemovedPacket packet, NetPeer peer)
+        private void OnCoinRemovedReceived(ItemRemovedPacket packet, NetPeer peer)
         {
             // Only process updates if we're fully connected and initialized
             if (!connected || GameWorld?.WorldObjects == null) return;
             
-            GameWorld.WorldObjects.RemoveCoinById(packet.coinId);
+            GameWorld.WorldObjects.RemoveCoinById(packet.itemId);
         }
         
-        
-        private void OnCoinSpawned(CoinSpawnedPacket packet, NetPeer peer)
+        private void OnCoinSpawned(ItemSpawnedPacket packet, NetPeer peer)
         {
             // Only process updates if we're fully connected and initialized
             if (!connected || GameWorld?.WorldObjects == null) return;
             
-            Logger.Info($"CLIENT DEBUG: Received CoinSpawnedPacket - CoinId: {packet.coinState.coinId}, Coords: {packet.coinState.coords}");
+            Logger.Info($"CLIENT DEBUG: Received CoinSpawnedPacket - CoinId: {packet.itemState.itemId}, Coords: {packet.itemState.gameEntityState.coords}");
             
             // Check if coin already exists (to avoid duplicates)
-            var existingCoin = GameWorld.WorldObjects.Coins.FirstOrDefault(c => c.CoinId == packet.coinState.coinId);
+            var existingCoin = GameWorld.WorldObjects.GetItems().FirstOrDefault(c => c.ItemId == packet.itemState.itemId);
             if (existingCoin == null)
             {
                 // Add the coin to our world
-                var coin = new Coin(packet.coinState.coinId, GameWorld.WorldObjects.GetCoinTexture(), packet.coinState.coords, packet.coinState.velocity);
+                var coin = new Item(packet.itemState.itemId, ItemType.COIN, GameWorld.WorldObjects.GetCoinTexture(), packet.itemState.gameEntityState.coords, packet.itemState.gameEntityState.velocity, packet.itemState.gameEntityState.mass);
                 coin.MarkAsChanged();
-                GameWorld.WorldObjects.Coins.Add(coin);
-                
+                GameWorld.WorldObjects.AddItem(coin);
             }
-            
-            Logger.Info($"Coin {packet.coinState.coinId} added to client world, Total coins: {GameWorld.WorldObjects.Coins.Count}");
         }
-        
         
         private void OnPlayerJoin(PlayerJoinedGamePacket packet, NetPeer peer)
         {
@@ -576,9 +528,9 @@ namespace CasinoRoyale.Classes.GameStates
                 PlayerTexture,
                 packet.new_player_state.ges.coords,
                 packet.new_player_state.ges.velocity,
-                packet.new_player_mass,
-                packet.new_player_initialJumpVelocity,
-                packet.new_player_standardSpeed,
+                packet.new_player_state.ges.mass,
+                packet.new_player_state.initialJumpVelocity,
+                packet.new_player_state.maxRunSpeed,
                 packet.new_player_hitbox,
                 true));
         }
