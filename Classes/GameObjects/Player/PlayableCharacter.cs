@@ -9,21 +9,23 @@ using CasinoRoyale.Classes.Networking;
 using CasinoRoyale.Classes.Networking.SerializingExtensions;
 using CasinoRoyale.Classes.GameSystems;
 using CasinoRoyale.Classes.GameObjects.Interfaces;
+using CasinoRoyale.Classes.GameObjects.Items;
+using CasinoRoyale.Classes.GameObjects.Items.Interfaces;
+using CasinoRoyale.Utils;
 
 namespace CasinoRoyale.Classes.GameObjects.Player;
 
-public class PlayableCharacter(uint pid, string username, Texture2D tex, Vector2 coords, Vector2 velocity, float mass, float initialJumpVelocity, float standardSpeed, Rectangle hitbox, bool awake)
-    : GameEntity(coords, velocity, hitbox, awake, mass),
+public class PlayableCharacter : GameEntity,
     CasinoRoyale.Classes.GameObjects.Interfaces.IDrawable,
     IJump
 {
     // PlayableCharacter
-    private readonly uint pid = pid;
-    private readonly string username = username;
-    private Texture2D tex = tex;
+    private readonly uint pid;
+    private readonly string username;
+    private Texture2D tex;
     public Texture2D Texture { get => tex; set => tex = value;}
 
-    private float standardSpeed = standardSpeed;
+    private float standardSpeed;
     public float StandardSpeed { get => standardSpeed; set => standardSpeed = value; }
 
     // Movement interpolation fields for inbetween network updates
@@ -41,13 +43,32 @@ public class PlayableCharacter(uint pid, string username, Texture2D tex, Vector2
     
     private readonly Queue<BufferedState> stateBuffer = new(); // Queue for the state buffer
     private float currentTime = 0f;
+    
+    // Inventory system
+    private readonly Inventory inventory;
+    public Inventory GetInventory() => inventory;
+    
+    // Item pickup range
+    private const float PICKUP_RANGE = 50f;
 
     // IJump
     private bool inJump = false;
     public bool InJump { get => inJump; set => inJump = value; }
     public bool InJumpSquat { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
-    private float initialJumpVelocity = initialJumpVelocity;
+    private float initialJumpVelocity;
     public float InitialJumpVelocity { get => initialJumpVelocity; set => initialJumpVelocity = value; }
+    
+    // Constructor with inventory initialization
+    public PlayableCharacter(uint pid, string username, Texture2D tex, Vector2 coords, Vector2 velocity, float mass, float initialJumpVelocity, float standardSpeed, Rectangle hitbox, bool awake)
+        : base(coords, velocity, hitbox, awake, mass)
+    {
+        this.pid = pid;
+        this.username = username;
+        this.tex = tex;
+        this.standardSpeed = standardSpeed;
+        this.initialJumpVelocity = initialJumpVelocity;
+        this.inventory = new Inventory(pid);
+    }
 
     // Method to mark new player as changed (call after construction)
     public void MarkAsNewPlayer()
@@ -81,13 +102,33 @@ public class PlayableCharacter(uint pid, string username, Texture2D tex, Vector2
             Velocity = new Vector2(Velocity.X * 1.5f, Velocity.Y);
         }
         
-        // Casino machine interaction removed
+        // Inventory system key inputs
+        // E key - Pick up items
+        if (ks.IsKeyDown(Keys.E) && !previousKs.IsKeyDown(Keys.E))
+        {
+            TryPickupNearbyItems(gameWorld);
+        }
+        
+        // Q key - Drop items
+        if (ks.IsKeyDown(Keys.Q) && !previousKs.IsKeyDown(Keys.Q))
+        {
+            TryDropItem(gameWorld);
+        }
+        
+        // I key - Use items
+        if (ks.IsKeyDown(Keys.I) && !previousKs.IsKeyDown(Keys.I))
+        {
+            TryUseItem();
+        }
 
         // Update velocity according to forces and movement requests
         UpdateJump(m_playerAttemptedJump, gameWorld);
 
         // Enforce movement rules using grid tiles (new system)
         PhysicsSystem.EnforceMovementRules(gameWorld.GameArea, gameWorld.GetPlatformTileHitboxes(), this, dt);
+        
+        // Auto-collect coins on contact
+        TryAutoCollectItems(gameWorld);
     }
 
     public void UpdateJump(bool m_playerAttemptedJump, GameWorld gameWorld)
@@ -227,6 +268,132 @@ public class PlayableCharacter(uint pid, string username, Texture2D tex, Vector2
     public uint GetID()
     {
         return pid;
+    }
+    
+    // ==================== INVENTORY METHODS ====================
+    
+    /// <summary>
+    /// Try to pick up nearby items that require manual pickup (E key)
+    /// </summary>
+    private void TryPickupNearbyItems(GameWorld gameWorld)
+    {
+        var nearbyItems = GetNearbyItems(gameWorld);
+        
+        foreach (var item in nearbyItems)
+        {
+            if (item is IPickupable pickupable && pickupable.RequiresManualPickup)
+            {
+                if (!inventory.IsFull())
+                {
+                    pickupable.OnPickup(this);
+                    // Item will be marked for destruction by OnPickup
+                }
+                else
+                {
+                    Logger.Info($"Player {username}'s inventory is full!");
+                }
+                break; // Only pick up one item per keypress
+            }
+        }
+    }
+    
+    /// <summary>
+    /// Auto-collect items that don't require manual pickup (like coins)
+    /// </summary>
+    private void TryAutoCollectItems(GameWorld gameWorld)
+    {
+        var nearbyItems = GetNearbyItems(gameWorld);
+        
+        foreach (var item in nearbyItems)
+        {
+            if (item is IPickupable pickupable && !pickupable.RequiresManualPickup)
+            {
+                if (!inventory.IsFull())
+                {
+                    pickupable.OnPickup(this);
+                    // Item will be marked for destruction by OnPickup
+                }
+            }
+        }
+    }
+    
+    /// <summary>
+    /// Drop the first non-empty item from inventory
+    /// </summary>
+    private void TryDropItem(GameWorld gameWorld)
+    {
+        var occupiedSlots = inventory.GetOccupiedSlots();
+        if (occupiedSlots.Length == 0)
+        {
+            Logger.Info($"Player {username} has no items to drop!");
+            return;
+        }
+        
+        // Drop from the first occupied slot
+        var slot = occupiedSlots[0];
+        var itemType = slot.GetItemType();
+        
+        if (itemType.HasValue)
+        {
+            // Remove one item from inventory
+            if (inventory.TryRemoveItem(itemType.Value))
+            {
+                // Calculate drop position and velocity
+                Vector2 dropPosition = Coords + new Vector2(Hitbox.Width / 2, 0);
+                Vector2 dropVelocity = new Vector2(Velocity.X * 0.5f, -100f); // Toss forward and up
+                
+                // Spawn the item in the world
+                gameWorld.SpawnItem(itemType.Value, dropPosition, dropVelocity);
+                
+                Logger.Info($"Player {username} dropped a {itemType.Value}!");
+            }
+        }
+    }
+    
+    /// <summary>
+    /// Use the first item in inventory (I key)
+    /// </summary>
+    private void TryUseItem()
+    {
+        var occupiedSlots = inventory.GetOccupiedSlots();
+        if (occupiedSlots.Length == 0)
+        {
+            Logger.Info($"Player {username} has no items to use!");
+            return;
+        }
+        
+        // Use from the first occupied slot
+        var slot = occupiedSlots[0];
+        var itemType = slot.GetItemType();
+        
+        if (itemType.HasValue)
+        {
+            // Get the use strategy for this item type
+            var strategy = Items.Strategies.ItemStrategyFactory.GetStrategy(itemType.Value);
+            strategy.Execute(this, itemType.Value);
+        }
+    }
+    
+    /// <summary>
+    /// Get all items within pickup range of the player
+    /// </summary>
+    private List<Item> GetNearbyItems(GameWorld gameWorld)
+    {
+        var nearbyItems = new List<Item>();
+        var playerCenter = new Vector2(Coords.X + Hitbox.Width / 2, Coords.Y + Hitbox.Height / 2);
+        
+        foreach (var item in gameWorld.AllItems)
+        {
+            var itemCenter = new Vector2(item.Coords.X + item.Hitbox.Width / 2, item.Coords.Y + item.Hitbox.Height / 2);
+            float distance = Vector2.Distance(playerCenter, itemCenter);
+            
+            if (distance <= PICKUP_RANGE)
+            {
+                nearbyItems.Add(item);
+            }
+        }
+        
+        return nearbyItems;
     }
 
 }
