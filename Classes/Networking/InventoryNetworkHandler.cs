@@ -24,11 +24,13 @@ public class InventoryNetworkHandler
     private GameWorld _gameWorld;
     private bool _isHost;
     
+    private bool _initialized = false;
+    
     private InventoryNetworkHandler() { }
     
     /// <summary>
-    /// Initialize the inventory network handler
-    /// Must be called before use
+    /// Initialize or update the inventory network handler
+    /// Safe to call multiple times - will update references if already initialized
     /// </summary>
     public static void Initialize(
         NetPeer relayPeer,
@@ -42,17 +44,31 @@ public class InventoryNetworkHandler
             _instance = new InventoryNetworkHandler();
         }
         
+        bool wasInitialized = _instance._initialized;
+        
         _instance._relayPeer = relayPeer;
         _instance._packetProcessor = packetProcessor;
         _instance._players = players;
         _instance._gameWorld = gameWorld;
         _instance._isHost = isHost;
         
-        // Register packet handlers
-        _instance.RegisterPacketHandlers();
-        
-        Logger.LogNetwork("INVENTORY", $"Initialized as {(isHost ? "Host" : "Client")}");
+        // Only register packet handlers once
+        if (!wasInitialized)
+        {
+            _instance.RegisterPacketHandlers();
+            _instance._initialized = true;
+            Logger.LogNetwork("INVENTORY", $"Initialized as {(isHost ? "Host" : "Client")}");
+        }
+        else
+        {
+            Logger.LogNetwork("INVENTORY", $"Updated references (already initialized as {(isHost ? "Host" : "Client")})");
+        }
     }
+    
+    /// <summary>
+    /// Check if the handler is initialized and ready to use
+    /// </summary>
+    public static bool IsInitialized => _instance?._initialized ?? false;
     
     private void RegisterPacketHandlers()
     {
@@ -79,7 +95,7 @@ public class InventoryNetworkHandler
     /// </summary>
     public void SendPickupRequest(uint playerId, uint itemId)
     {
-        if (_isHost) return; // Host doesn't send requests to itself
+        if (!_initialized || _isHost) return; // Host doesn't send requests to itself
         
         var request = new ItemPickupRequestPacket
         {
@@ -99,7 +115,7 @@ public class InventoryNetworkHandler
     /// </summary>
     public void SendDropRequest(uint playerId, ItemType itemType, Microsoft.Xna.Framework.Vector2 dropPosition, Microsoft.Xna.Framework.Vector2 dropVelocity)
     {
-        if (_isHost) return; // Host doesn't send requests to itself
+        if (!_initialized || _isHost) return; // Host doesn't send requests to itself
         
         var request = new ItemDropRequestPacket
         {
@@ -121,7 +137,7 @@ public class InventoryNetworkHandler
     /// </summary>
     public void SendUseRequest(uint playerId, ItemType itemType)
     {
-        if (_isHost) return; // Host doesn't send requests to itself
+        if (!_initialized || _isHost) return; // Host doesn't send requests to itself
         
         var request = new ItemUseRequestPacket
         {
@@ -231,7 +247,7 @@ public class InventoryNetworkHandler
     /// </summary>
     public void BroadcastPickup(uint playerId, uint itemId, ItemType itemType, bool success)
     {
-        if (!_isHost) return;
+        if (!_initialized || !_isHost) return;
         
         var broadcast = new ItemPickupBroadcastPacket
         {
@@ -253,7 +269,7 @@ public class InventoryNetworkHandler
     /// </summary>
     public void BroadcastDrop(uint playerId, ItemType itemType, Item newItem)
     {
-        if (!_isHost) return;
+        if (!_initialized || !_isHost) return;
         
         var broadcast = new ItemDropBroadcastPacket
         {
@@ -275,7 +291,7 @@ public class InventoryNetworkHandler
     /// </summary>
     public void BroadcastUse(uint playerId, ItemType itemType)
     {
-        if (!_isHost) return;
+        if (!_initialized || !_isHost) return;
         
         var broadcast = new ItemUseBroadcastPacket
         {

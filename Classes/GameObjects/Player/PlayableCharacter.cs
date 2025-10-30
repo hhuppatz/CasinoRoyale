@@ -275,6 +275,7 @@ public class PlayableCharacter : GameEntity,
     /// <summary>
     /// Try to pick up nearby items that require manual pickup (E key)
     /// Network-compatible: Clients send requests, Host processes directly
+    /// Falls back to local processing if networking isn't initialized (single-player)
     /// </summary>
     private void TryPickupNearbyItems(GameWorld gameWorld)
     {
@@ -286,16 +287,24 @@ public class PlayableCharacter : GameEntity,
             {
                 if (!inventory.IsFull())
                 {
-                    // Check if we're in networked mode
-                    if (NetworkManager.Instance.IsHost)
+                    // Check if we're in networked mode with initialized handler
+                    if (InventoryNetworkHandler.IsInitialized)
                     {
-                        // Host: Process pickup immediately and will broadcast to clients
-                        ProcessItemPickup(item, gameWorld);
+                        if (NetworkManager.Instance.IsHost)
+                        {
+                            // Host: Process pickup immediately and will broadcast to clients
+                            ProcessItemPickup(item, gameWorld);
+                        }
+                        else
+                        {
+                            // Client: Send pickup request to host
+                            SendPickupRequest(item.ItemId);
+                        }
                     }
                     else
                     {
-                        // Client: Send pickup request to host
-                        SendPickupRequest(item.ItemId);
+                        // Single-player or networking not initialized: process locally
+                        ProcessItemPickup(item, gameWorld);
                     }
                 }
                 else
@@ -327,8 +336,8 @@ public class PlayableCharacter : GameEntity,
                 Logger.Info($"Player {username} picked up {item.ItemType}!");
                 pickupable.OnPickup(this);
                 
-                // Host broadcasts pickup to all clients
-                if (NetworkManager.Instance.IsHost)
+                // Host broadcasts pickup to all clients (if networking is active)
+                if (InventoryNetworkHandler.IsInitialized && NetworkManager.Instance.IsHost)
                 {
                     InventoryNetworkHandler.Instance?.BroadcastPickup(pid, item.ItemId, item.ItemType, true);
                 }
@@ -337,8 +346,8 @@ public class PlayableCharacter : GameEntity,
             }
         }
         
-        // Broadcast failure if inventory was full
-        if (NetworkManager.Instance.IsHost)
+        // Broadcast failure if inventory was full (if networking is active)
+        if (InventoryNetworkHandler.IsInitialized && NetworkManager.Instance.IsHost)
         {
             InventoryNetworkHandler.Instance?.BroadcastPickup(pid, item.ItemId, item.ItemType, false);
         }
@@ -349,6 +358,7 @@ public class PlayableCharacter : GameEntity,
     /// <summary>
     /// Auto-collect items that don't require manual pickup (like coins)
     /// Network-compatible: Clients send requests, Host processes directly
+    /// Falls back to local processing if networking isn't initialized (single-player)
     /// </summary>
     private void TryAutoCollectItems(GameWorld gameWorld)
     {
@@ -360,16 +370,24 @@ public class PlayableCharacter : GameEntity,
             {
                 if (!inventory.IsFull())
                 {
-                    // Check if we're in networked mode
-                    if (NetworkManager.Instance.IsHost)
+                    // Check if we're in networked mode with initialized handler
+                    if (InventoryNetworkHandler.IsInitialized)
                     {
-                        // Host: Process pickup immediately and will broadcast to clients
-                        ProcessItemPickup(item, gameWorld);
+                        if (NetworkManager.Instance.IsHost)
+                        {
+                            // Host: Process pickup immediately and will broadcast to clients
+                            ProcessItemPickup(item, gameWorld);
+                        }
+                        else
+                        {
+                            // Client: Send pickup request to host
+                            SendPickupRequest(item.ItemId);
+                        }
                     }
                     else
                     {
-                        // Client: Send pickup request to host
-                        SendPickupRequest(item.ItemId);
+                        // Single-player or networking not initialized: process locally
+                        ProcessItemPickup(item, gameWorld);
                     }
                 }
             }
@@ -379,6 +397,7 @@ public class PlayableCharacter : GameEntity,
     /// <summary>
     /// Drop the first non-empty item from inventory
     /// Network-compatible: Clients send requests, Host processes directly
+    /// Falls back to local processing if networking isn't initialized (single-player)
     /// </summary>
     private void TryDropItem(GameWorld gameWorld)
     {
@@ -399,16 +418,24 @@ public class PlayableCharacter : GameEntity,
             Vector2 dropPosition = Coords + new Vector2(Hitbox.Width / 2, 0);
             Vector2 dropVelocity = new Vector2(Velocity.X * 0.5f, -100f); // Toss forward and up
             
-            // Check if we're in networked mode
-            if (NetworkManager.Instance.IsHost)
+            // Check if we're in networked mode with initialized handler
+            if (InventoryNetworkHandler.IsInitialized)
             {
-                // Host: Process drop immediately and will broadcast to clients
-                ProcessItemDrop(itemType.Value, dropPosition, dropVelocity, gameWorld);
+                if (NetworkManager.Instance.IsHost)
+                {
+                    // Host: Process drop immediately and will broadcast to clients
+                    ProcessItemDrop(itemType.Value, dropPosition, dropVelocity, gameWorld);
+                }
+                else
+                {
+                    // Client: Send drop request to host
+                    SendDropRequest(itemType.Value, dropPosition, dropVelocity);
+                }
             }
             else
             {
-                // Client: Send drop request to host
-                SendDropRequest(itemType.Value, dropPosition, dropVelocity);
+                // Single-player or networking not initialized: process locally
+                ProcessItemDrop(itemType.Value, dropPosition, dropVelocity, gameWorld);
             }
         }
     }
@@ -433,8 +460,8 @@ public class PlayableCharacter : GameEntity,
             gameWorld.SpawnItem(itemType, dropPosition, dropVelocity);
             Logger.Info($"Player {username} dropped a {itemType}!");
             
-            // Host broadcasts drop to all clients
-            if (NetworkManager.Instance.IsHost && gameWorld.AllItems.Count > 0)
+            // Host broadcasts drop to all clients (if networking is active)
+            if (InventoryNetworkHandler.IsInitialized && NetworkManager.Instance.IsHost && gameWorld.AllItems.Count > 0)
             {
                 var newItem = gameWorld.AllItems[gameWorld.AllItems.Count - 1]; // Last spawned item
                 InventoryNetworkHandler.Instance?.BroadcastDrop(pid, itemType, newItem);
@@ -448,6 +475,7 @@ public class PlayableCharacter : GameEntity,
     /// <summary>
     /// Use the first item in inventory (I key)
     /// Network-compatible: Clients send requests, Host processes directly
+    /// Falls back to local processing if networking isn't initialized (single-player)
     /// </summary>
     private void TryUseItem()
     {
@@ -464,16 +492,24 @@ public class PlayableCharacter : GameEntity,
         
         if (itemType.HasValue)
         {
-            // Check if we're in networked mode
-            if (NetworkManager.Instance.IsHost)
+            // Check if we're in networked mode with initialized handler
+            if (InventoryNetworkHandler.IsInitialized)
             {
-                // Host: Process use immediately and will broadcast to clients
-                ProcessItemUse(itemType.Value);
+                if (NetworkManager.Instance.IsHost)
+                {
+                    // Host: Process use immediately and will broadcast to clients
+                    ProcessItemUse(itemType.Value);
+                }
+                else
+                {
+                    // Client: Send use request to host
+                    SendUseRequest(itemType.Value);
+                }
             }
             else
             {
-                // Client: Send use request to host
-                SendUseRequest(itemType.Value);
+                // Single-player or networking not initialized: process locally
+                ProcessItemUse(itemType.Value);
             }
         }
     }
@@ -497,8 +533,8 @@ public class PlayableCharacter : GameEntity,
             var strategy = Items.Strategies.ItemStrategyFactory.GetStrategy(itemType);
             strategy.Execute(this, itemType);
             
-            // Host broadcasts use to all clients
-            if (NetworkManager.Instance.IsHost)
+            // Host broadcasts use to all clients (if networking is active)
+            if (InventoryNetworkHandler.IsInitialized && NetworkManager.Instance.IsHost)
             {
                 InventoryNetworkHandler.Instance?.BroadcastUse(pid, itemType);
             }
