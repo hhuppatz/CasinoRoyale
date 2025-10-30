@@ -1,26 +1,25 @@
-using LiteNetLib.Utils;
-using Microsoft.Xna.Framework;
 using CasinoRoyale.Classes.GameObjects;
 using CasinoRoyale.Classes.GameObjects.Items;
 using CasinoRoyale.Classes.GameObjects.Platforms;
 using CasinoRoyale.Classes.GameObjects.Player;
+using LiteNetLib.Utils;
+using Microsoft.Xna.Framework;
 
 namespace CasinoRoyale.Classes.Networking.SerializingExtensions;
 
 public static class SerializingExtensions
 {
-    // Custom serializers for XNA Framework types
     public static void SerializeVector2(NetDataWriter writer, Vector2 vector)
     {
         writer.Put(vector.X);
         writer.Put(vector.Y);
     }
-    
+
     private static Vector2 DeserializeVector2(NetDataReader reader)
     {
         return new Vector2(reader.GetFloat(), reader.GetFloat());
     }
-    
+
     private static void SerializeRectangle(NetDataWriter writer, Rectangle rectangle)
     {
         writer.Put(rectangle.X);
@@ -28,13 +27,12 @@ public static class SerializingExtensions
         writer.Put(rectangle.Width);
         writer.Put(rectangle.Height);
     }
-    
+
     private static Rectangle DeserializeRectangle(NetDataReader reader)
     {
         return new Rectangle(reader.GetInt(), reader.GetInt(), reader.GetInt(), reader.GetInt());
     }
-    
-    // Custom serializers for game object types
+
     private static void SerializeGameEntityState(NetDataWriter writer, GameEntityState ges)
     {
         writer.Put(ges.awake);
@@ -42,18 +40,18 @@ public static class SerializingExtensions
         SerializeVector2(writer, ges.velocity);
         writer.Put(ges.mass);
     }
-    
+
     private static GameEntityState DeserializeGameEntityState(NetDataReader reader)
     {
-        return new GameEntityState 
-        { 
-            awake = reader.GetBool(), 
-            coords = DeserializeVector2(reader), 
-            velocity = DeserializeVector2(reader), 
-            mass = reader.GetFloat() 
+        return new GameEntityState
+        {
+            awake = reader.GetBool(),
+            coords = DeserializeVector2(reader),
+            velocity = DeserializeVector2(reader),
+            mass = reader.GetFloat(),
         };
     }
-    
+
     private static void SerializePlayerState(NetDataWriter writer, PlayerState playerState)
     {
         writer.Put((byte)playerState.objectType);
@@ -63,7 +61,7 @@ public static class SerializingExtensions
         writer.Put(playerState.initialJumpVelocity);
         writer.Put(playerState.maxRunSpeed);
     }
-    
+
     private static PlayerState DeserializePlayerState(NetDataReader reader)
     {
         return new PlayerState
@@ -73,14 +71,10 @@ public static class SerializingExtensions
             username = reader.GetString(),
             ges = DeserializeGameEntityState(reader),
             initialJumpVelocity = reader.GetFloat(),
-            maxRunSpeed = reader.GetFloat()
+            maxRunSpeed = reader.GetFloat(),
         };
     }
-    
-    // Platform serializers removed with grid migration
-    
-    // Casino machine serializers removed
-    
+
     private static void SerializeItemState(NetDataWriter writer, ItemState itemState)
     {
         writer.Put((byte)itemState.objectType);
@@ -88,7 +82,7 @@ public static class SerializingExtensions
         writer.Put((byte)itemState.itemType);
         SerializeGameEntityState(writer, itemState.gameEntityState);
     }
-    
+
     private static ItemState DeserializeItemState(NetDataReader reader)
     {
         return new ItemState
@@ -96,7 +90,7 @@ public static class SerializingExtensions
             objectType = (ObjectType)reader.GetByte(),
             itemId = reader.GetUInt(),
             itemType = (ItemType)reader.GetByte(),
-            gameEntityState = DeserializeGameEntityState(reader)
+            gameEntityState = DeserializeGameEntityState(reader),
         };
     }
 }

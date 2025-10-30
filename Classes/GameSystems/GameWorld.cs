@@ -1,39 +1,50 @@
-using Microsoft.Xna.Framework;
-using Microsoft.Xna.Framework.Graphics;
-using Microsoft.Xna.Framework.Content;
-using CasinoRoyale.Utils;
-using CasinoRoyale.Classes.Networking;
-using CasinoRoyale.Classes.GameUtilities;
-using CasinoRoyale.Classes.GameObjects.Platforms;
+using System.Collections.Generic;
+using System.Linq;
 using CasinoRoyale.Classes.GameObjects.Items;
 using CasinoRoyale.Classes.GameObjects.Items.Coin;
 using CasinoRoyale.Classes.GameObjects.Items.Sword;
-using System.Collections.Generic;
-using System.Linq;
+using CasinoRoyale.Classes.GameObjects.Platforms;
+using CasinoRoyale.Classes.GameUtilities;
+using CasinoRoyale.Classes.Networking;
+using CasinoRoyale.Utils;
+using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Content;
+using Microsoft.Xna.Framework.Graphics;
 
 namespace CasinoRoyale.Classes.GameSystems;
 
-public class GameWorld(Properties properties, ContentManager content, SpriteBatch spriteBatch, MainCamera camera, Vector2 ratio)
+public partial class GameWorld(
+    Properties properties,
+    ContentManager content,
+    SpriteBatch spriteBatch,
+    MainCamera camera,
+    Vector2 ratio
+)
 {
     public Rectangle GameArea { get; private set; }
     private readonly Artist artist = new(content, spriteBatch, camera, ratio);
-    private readonly Texture2D _floorTexture = content.Load<Texture2D>(properties.get("casinoFloor.image.1", "CasinoFloor1"));
+    private readonly Texture2D _floorTexture = content.Load<Texture2D>(
+        properties.get("casinoFloor.image.1", "CasinoFloor1")
+    );
     private readonly ItemManager itemManager = new(content, properties);
     private readonly GridManager gridManager = new(
         int.Parse(properties.get("gameArea.width", "4000")),
         int.Parse(properties.get("gameArea.height", "4000")),
-        32);
+        16
+    );
 
     private readonly Properties gameProperties = properties;
     private readonly ContentManager gameContent = content;
 
     public void InitializeGameWorld(Vector2 playerOrigin, Rectangle gameArea = default)
-    {   
-        if (gameArea == default) LoadGameArea();
-        else GameArea = gameArea;
+    {
+        if (gameArea == default)
+            LoadGameArea();
+        else
+            GameArea = gameArea;
 
         GenerateGameWorld(GameArea, playerOrigin);
-        
+
         PhysicsSystem.Initialize(gameProperties);
     }
 
@@ -42,7 +53,7 @@ public class GameWorld(Properties properties, ContentManager content, SpriteBatc
         GameArea = joinAccept.gameArea;
 
         GenerateGameWorldFromState(joinAccept);
-        
+
         // Initialize physics system for client
         PhysicsSystem.Initialize(gameProperties);
     }
@@ -54,12 +65,12 @@ public class GameWorld(Properties properties, ContentManager content, SpriteBatc
             Logger.Error("gameProperties is null in LoadGameArea()!");
             return;
         }
-        
+
         int gameAreaX = int.Parse(gameProperties.get("gameArea.x", "-2000"));
         int gameAreaY = int.Parse(gameProperties.get("gameArea.y", "0"));
         int gameAreaWidth = int.Parse(gameProperties.get("gameArea.width", "4000"));
         int gameAreaHeight = int.Parse(gameProperties.get("gameArea.height", "4000"));
-        
+
         GameArea = new Rectangle(gameAreaX, gameAreaY, gameAreaWidth, gameAreaHeight);
     }
 
@@ -68,7 +79,7 @@ public class GameWorld(Properties properties, ContentManager content, SpriteBatc
         artist.DrawGridTiles(gridManager.GetAllTiles());
         artist.DrawItems(AllItems);
     }
-    
+
     // Calculates player origin based on game area and texture height
     public Vector2 CalculatePlayerOrigin(int playerTextureHeight)
     {
@@ -77,7 +88,7 @@ public class GameWorld(Properties properties, ContentManager content, SpriteBatc
             Logger.Error("GameArea is not initialized in CalculatePlayerOrigin()!");
             return Vector2.Zero;
         }
-        
+
         // Player spawns at the exact bottom of the world
         return new Vector2(0, GameArea.Y + GameArea.Height - playerTextureHeight);
     }
@@ -123,13 +134,25 @@ public class GameWorld(Properties properties, ContentManager content, SpriteBatc
     public List<Sword> Swords => itemManager.GetItemsOfType<Sword>();
     public List<Item> AllItems => itemManager.GetAllItems();
 
-    public void SpawnItem(ItemType itemType, Vector2 position, Vector2 velocity = default, float mass = 10.0f, float elasticity = 0.5f)
-        => itemManager.SpawnItem(itemType, position, velocity, mass, elasticity);
+    public void SpawnItem(
+        ItemType itemType,
+        Vector2 position,
+        Vector2 velocity = default,
+        float mass = 10.0f,
+        float elasticity = 0.5f
+    ) => itemManager.SpawnItem(itemType, position, velocity, mass, elasticity);
+
     public void RemoveItemById(uint id) => itemManager.RemoveItemById(id);
-    public void ProcessItemStates(ItemState[] itemStates) => itemManager.ProcessItemStates(itemStates);
+
+    public void ProcessItemStates(ItemState[] itemStates) =>
+        itemManager.ProcessItemStates(itemStates);
+
     public void AddItem(Item item) => itemManager.AddItem(item);
+
     public ItemState[] GetItemStates() => itemManager.GetAllItemStates();
+
     public ItemState[] GetChangedItemStates() => itemManager.GetChangedItemStates();
+
     public Item GetItemById(uint itemId) => AllItems.FirstOrDefault(item => item.ItemId == itemId);
 
     public GridTileState[] GetGridTileStates()
@@ -138,13 +161,15 @@ public class GameWorld(Properties properties, ContentManager content, SpriteBatc
         var list = new List<GridTileState>();
         foreach (var tile in tiles)
         {
-            list.Add(new GridTileState
-            {
-                type = tile.Type,
-                hitbox = tile.Hitbox,
-                source = tile.Source,
-                isSolid = tile.IsSolid
-            });
+            list.Add(
+                new GridTileState
+                {
+                    type = tile.Type,
+                    hitbox = tile.Hitbox,
+                    source = tile.Source,
+                    isSolid = tile.IsSolid,
+                }
+            );
         }
         return list.ToArray();
     }
@@ -153,5 +178,74 @@ public class GameWorld(Properties properties, ContentManager content, SpriteBatc
     {
         // Minimal mapping: use floor texture for now; extend with per-type assets as needed
         return _floorTexture;
+    }
+}
+
+// Observer handlers for item packets
+partial class GameWorld
+    : CasinoRoyale.Classes.Networking.AsyncPacketProcessor.INetworkObserver<ItemUpdatePacket>,
+        CasinoRoyale.Classes.Networking.AsyncPacketProcessor.INetworkObserver<ItemRemovedPacket>,
+        CasinoRoyale.Classes.Networking.AsyncPacketProcessor.INetworkObserver<GameWorldInitPacket>,
+        CasinoRoyale.Classes.Networking.AsyncPacketProcessor.INetworkObserver<JoinAcceptPacket>
+{
+    public void OnPacket(ItemUpdatePacket packet)
+    {
+        if (packet?.itemStates != null)
+        {
+            itemManager.ProcessItemStates(packet.itemStates);
+        }
+    }
+
+    public void OnPacket(ItemRemovedPacket packet)
+    {
+        RemoveItemById(packet.itemId);
+    }
+
+    public void OnPacket(GameWorldInitPacket packet)
+    {
+        // Initialize client game world from a lightweight init packet
+        if (packet.gameArea != Rectangle.Empty)
+        {
+            GameArea = packet.gameArea;
+        }
+        if (packet.itemStates != null)
+        {
+            itemManager.ProcessItemStates(packet.itemStates);
+        }
+        if (packet.gridTiles != null)
+        {
+            foreach (var t in packet.gridTiles)
+            {
+                var texture = ResolveTextureForTileType(t.type);
+                if (texture != null)
+                {
+                    gridManager.PlaceTile(t.type, t.hitbox, texture, t.source, t.isSolid);
+                }
+            }
+        }
+    }
+
+    public void OnPacket(JoinAcceptPacket packet)
+    {
+        // Full join accept also contains area, items, grid
+        if (packet.gameArea != Rectangle.Empty)
+        {
+            GameArea = packet.gameArea;
+        }
+        if (packet.itemStates != null)
+        {
+            itemManager.ProcessItemStates(packet.itemStates);
+        }
+        if (packet.gridTiles != null)
+        {
+            foreach (var t in packet.gridTiles)
+            {
+                var texture = ResolveTextureForTileType(t.type);
+                if (texture != null)
+                {
+                    gridManager.PlaceTile(t.type, t.hitbox, texture, t.source, t.isSolid);
+                }
+            }
+        }
     }
 }

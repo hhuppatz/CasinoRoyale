@@ -11,23 +11,32 @@ public class SwordFactory(Texture2D swordTex) : IItemFactory<Item>
     private readonly Texture2D swordTex = swordTex;
 
     // IItemFactory<Item> implementation
-    public Item CreateItem(uint id, Vector2 position, Vector2 velocity, float mass = 10.0f, float elasticity = 0.5f)
+    public Item CreateItem(
+        uint id,
+        Vector2 position,
+        Vector2 velocity,
+        float mass = 10.0f,
+        float elasticity = 0.5f
+    )
     {
         return new Sword(id, swordTex, position, velocity, mass, elasticity);
     }
-    
+
     public Texture2D GetTexture() => swordTex;
-    
+
     public ItemType GetItemType() => ItemType.SWORD;
-    
+
     public Item CreateFromState(ItemState state)
     {
         if (state.itemType == ItemType.SWORD)
         {
-            return new Sword(state.itemId, swordTex, 
-                state.gameEntityState.coords, 
-                state.gameEntityState.velocity, 
-                state.gameEntityState.mass);
+            return new Sword(
+                state.itemId,
+                swordTex,
+                state.gameEntityState.coords,
+                state.gameEntityState.velocity,
+                state.gameEntityState.mass
+            );
         }
         return null;
     }

@@ -1,5 +1,5 @@
-using Microsoft.Xna.Framework;
 using CasinoRoyale.Classes.GameObjects.Player;
+using Microsoft.Xna.Framework;
 
 namespace CasinoRoyale.Classes.GameObjects.Items.Interfaces;
 

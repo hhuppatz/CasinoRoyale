@@ -1,9 +1,9 @@
 // An adaptation of Java's Properties class for .NET
 // By user "Nick Rimmer" on StackOverflow.com
-// Found at "https://stackoverflow.com/questions/485659" 
+// Found at "https://stackoverflow.com/questions/485659"
 using System;
-using System.Linq;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace CasinoRoyale.Utils;
 
@@ -16,7 +16,7 @@ public class Properties
     {
         reload(file);
     }
-        
+
     public string get(string field, string defValue)
     {
         return (get(field) == null) ? (defValue) : (get(field));
@@ -24,7 +24,7 @@ public class Properties
 
     public string get(string field)
     {
-        return (list.ContainsKey(field))?(list[field]):(null);
+        return (list.ContainsKey(field)) ? (list[field]) : (null);
     }
 
     public void set(string field, Object value)
@@ -35,7 +35,6 @@ public class Properties
             list[field] = value.ToString();
     }
 
-
     public void Save(string filename)
     {
         this.filename = filename;
@@ -45,13 +44,12 @@ public class Properties
 
         System.IO.StreamWriter file = new System.IO.StreamWriter(filename);
 
-        foreach(string prop in list.Keys.ToArray())
+        foreach (string prop in list.Keys.ToArray())
             if (!string.IsNullOrWhiteSpace(list[prop]))
                 file.WriteLine(prop + "=" + list[prop]);
 
         file.Close();
     }
-
 
     public void reload(string filename)
     {
@@ -68,18 +66,22 @@ public class Properties
     {
         foreach (string line in System.IO.File.ReadAllLines(file))
         {
-            if ((!string.IsNullOrEmpty(line)) &&
-                (!line.StartsWith(";")) &&
-                (!line.StartsWith("#")) &&
-                (!line.StartsWith("'")) &&
-                (line.Contains('=')))
+            if (
+                (!string.IsNullOrEmpty(line))
+                && (!line.StartsWith(";"))
+                && (!line.StartsWith("#"))
+                && (!line.StartsWith("'"))
+                && (line.Contains('='))
+            )
             {
                 int index = line.IndexOf('=');
                 string key = line.Substring(0, index).Trim();
                 string value = line.Substring(index + 1).Trim();
 
-                if ((value.StartsWith("\"") && value.EndsWith("\"")) ||
-                    (value.StartsWith("'") && value.EndsWith("'")))
+                if (
+                    (value.StartsWith("\"") && value.EndsWith("\""))
+                    || (value.StartsWith("'") && value.EndsWith("'"))
+                )
                 {
                     value = value.Substring(1, value.Length - 2);
                 }

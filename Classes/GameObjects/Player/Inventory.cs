@@ -13,11 +13,11 @@ public class Inventory
 {
     private readonly uint playerId;
     public uint PlayerId => playerId;
-    
+
     // Fixed array of 3 inventory slots
     private readonly InventorySlot[] slots = new InventorySlot[3];
     public const int MAX_SLOTS = 3;
-    
+
     public Inventory(uint playerId)
     {
         this.playerId = playerId;
@@ -27,7 +27,7 @@ public class Inventory
             slots[i] = new InventorySlot();
         }
     }
-    
+
     /// <summary>
     /// Try to add an item to the inventory
     /// First checks if the item type already exists, then adds to that slot
@@ -45,7 +45,7 @@ public class Inventory
                 return true;
             }
         }
-        
+
         // If not, find the first empty slot
         foreach (var slot in slots)
         {
@@ -55,11 +55,11 @@ public class Inventory
                 return true;
             }
         }
-        
+
         // No empty slots available
         return false;
     }
-    
+
     /// <summary>
     /// Remove one item of the specified type from the inventory
     /// </summary>
@@ -75,17 +75,18 @@ public class Inventory
         }
         return false;
     }
-    
+
     /// <summary>
     /// Remove an item from a specific slot index
     /// </summary>
     /// <returns>True if item was removed successfully</returns>
     public bool TryRemoveItemFromSlot(int slotIndex)
     {
-        if (slotIndex < 0 || slotIndex >= MAX_SLOTS) return false;
+        if (slotIndex < 0 || slotIndex >= MAX_SLOTS)
+            return false;
         return slots[slotIndex].RemoveItem();
     }
-    
+
     /// <summary>
     /// Check if the inventory contains the specified item type
     /// </summary>
@@ -93,7 +94,7 @@ public class Inventory
     {
         return slots.Any(slot => slot.ContainsItemType(itemType));
     }
-    
+
     /// <summary>
     /// Get the count of a specific item type in the inventory
     /// </summary>
@@ -108,7 +109,7 @@ public class Inventory
         }
         return 0;
     }
-    
+
     /// <summary>
     /// Get the slot that contains the specified item type
     /// </summary>
@@ -124,17 +125,20 @@ public class Inventory
         }
         return -1;
     }
-    
+
     /// <summary>
     /// Get a specific inventory slot by index
     /// </summary>
     public InventorySlot GetSlot(int index)
     {
         if (index < 0 || index >= MAX_SLOTS)
-            throw new ArgumentOutOfRangeException(nameof(index), $"Slot index must be between 0 and {MAX_SLOTS - 1}");
+            throw new ArgumentOutOfRangeException(
+                nameof(index),
+                $"Slot index must be between 0 and {MAX_SLOTS - 1}"
+            );
         return slots[index];
     }
-    
+
     /// <summary>
     /// Get all non-empty slots
     /// </summary>
@@ -142,7 +146,7 @@ public class Inventory
     {
         return slots.Where(slot => !slot.IsEmpty()).ToArray();
     }
-    
+
     /// <summary>
     /// Check if the inventory is full
     /// </summary>
@@ -150,7 +154,7 @@ public class Inventory
     {
         return slots.All(slot => !slot.IsEmpty());
     }
-    
+
     /// <summary>
     /// Get the number of empty slots
     /// </summary>
@@ -158,7 +162,7 @@ public class Inventory
     {
         return slots.Count(slot => slot.IsEmpty());
     }
-    
+
     /// <summary>
     /// Clear all items from the inventory
     /// </summary>

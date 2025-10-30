@@ -1,10 +1,10 @@
 using System.Collections.Generic;
-using Microsoft.Xna.Framework;
-using Microsoft.Xna.Framework.Graphics;
 using CasinoRoyale.Classes.GameObjects.Items.Interfaces;
 using CasinoRoyale.Classes.GameObjects.Items.Strategies;
 using CasinoRoyale.Classes.GameObjects.Player;
 using CasinoRoyale.Utils;
+using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Graphics;
 
 namespace CasinoRoyale.Classes.GameObjects.Items.Coin;
 
@@ -13,15 +13,24 @@ namespace CasinoRoyale.Classes.GameObjects.Items.Coin;
 /// Can be used with I key for gambling/purchasing
 /// Can be dropped with Q key
 /// </summary>
-public class Coin(uint itemId, Texture2D tex, Vector2 coords, Vector2 startVelocity, float mass = 4.0f, float elasticity = 0.5f)
-: Item(itemId, ItemType.COIN, tex, coords, startVelocity, mass, elasticity),
-  IPickupable, IUsable, IDroppable
+public class Coin(
+    uint itemId,
+    Texture2D tex,
+    Vector2 coords,
+    Vector2 startVelocity,
+    float mass = 4.0f,
+    float elasticity = 0.5f
+)
+    : Item(itemId, ItemType.COIN, tex, coords, startVelocity, mass, elasticity),
+        IPickupable,
+        IUsable,
+        IDroppable
 {
     // IPickupable - Coins are auto-collected (don't require E key)
     public bool RequiresManualPickup => false;
-    
+
     private readonly IItemUseStrategy useStrategy = ItemStrategyFactory.GetStrategy(ItemType.COIN);
-    
+
     public override void Update(float dt, Rectangle gameArea, IEnumerable<Rectangle> tileRects)
     {
         base.Update(dt, gameArea, tileRects);
@@ -36,7 +45,7 @@ public class Coin(uint itemId, Texture2D tex, Vector2 coords, Vector2 startVeloc
         // Mark for destruction after collection
         DestroyEntity();
     }
-    
+
     // IPickupable implementation
     public void OnPickup(PlayableCharacter player)
     {
@@ -47,18 +56,18 @@ public class Coin(uint itemId, Texture2D tex, Vector2 coords, Vector2 startVeloc
             Collect();
         }
     }
-    
+
     // IUsable implementation
     public void Use(PlayableCharacter player)
     {
         useStrategy.Execute(player, ItemType.COIN);
     }
-    
+
     public string GetUsageDescription()
     {
         return useStrategy.GetDescription();
     }
-    
+
     // IDroppable implementation
     public void OnDrop(PlayableCharacter player, Vector2 dropPosition, Vector2 dropVelocity)
     {

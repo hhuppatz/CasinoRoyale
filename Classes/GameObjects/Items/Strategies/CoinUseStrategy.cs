@@ -19,7 +19,7 @@ public class CoinUseStrategy : IItemUseStrategy
             Logger.Info($"Player {player.GetUsername()} used a coin! (Has {coinCount} coins)");
         }
     }
-    
+
     public string GetDescription()
     {
         return "Use coin for gambling or purchasing";

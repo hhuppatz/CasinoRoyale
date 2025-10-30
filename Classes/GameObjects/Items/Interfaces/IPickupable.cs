@@ -12,7 +12,7 @@ public interface IPickupable
     /// Whether this item requires manual pickup (E key) or is auto-collected
     /// </summary>
     bool RequiresManualPickup { get; }
-    
+
     /// <summary>
     /// Called when a player picks up this item
     /// </summary>

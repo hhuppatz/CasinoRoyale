@@ -1,18 +1,20 @@
 // Packet classes
-using LiteNetLib.Utils;
-using Microsoft.Xna.Framework;
-using CasinoRoyale.Classes.GameObjects.Platforms;
 using CasinoRoyale.Classes.GameObjects.Items;
+using CasinoRoyale.Classes.GameObjects.Platforms;
 using CasinoRoyale.Classes.GameObjects.Player;
 using CasinoRoyale.Classes.Networking.SerializingExtensions;
+using LiteNetLib.Utils;
+using Microsoft.Xna.Framework;
 
 namespace CasinoRoyale.Classes.Networking;
+
 public enum ObjectType : byte
 {
     PLATFORM = 0,
     ITEM = 1,
-    PLAYABLECHARACTER = 2
+    PLAYABLECHARACTER = 2,
 }
+
 // Generic object spawn request (client -> host)
 public class NetworkObjectSpawnRequestPacket : INetSerializable
 {
@@ -82,6 +84,7 @@ public class JoinPacket : INetSerializable
     public float playerMass { get; set; }
     public float playerInitialJumpVelocity { get; set; }
     public float playerStandardSpeed { get; set; }
+    public string clientNonce { get; set; }
 
     public void Serialize(NetDataWriter writer)
     {
@@ -89,20 +92,24 @@ public class JoinPacket : INetSerializable
         writer.Put(playerMass);
         writer.Put(playerInitialJumpVelocity);
         writer.Put(playerStandardSpeed);
+        writer.Put(clientNonce);
     }
-    
+
     public void Deserialize(NetDataReader reader)
     {
         username = reader.GetString();
         playerMass = reader.GetFloat();
         playerInitialJumpVelocity = reader.GetFloat();
         playerStandardSpeed = reader.GetFloat();
+        clientNonce = reader.GetString();
     }
 }
 
 // Sent to new player on accceptance
-public class JoinAcceptPacket : INetSerializable {
-    public uint targetClientId { get; set; }  // Add target client ID to prevent cross-client packet processing
+public class JoinAcceptPacket : INetSerializable
+{
+    public uint targetClientId { get; set; } // Add target client ID to prevent cross-client packet processing
+    public string clientNonce { get; set; } // Echoed back to the client that requested join
     public Rectangle gameArea { get; set; }
     public Rectangle playerHitbox { get; set; }
     public PlayerState playerState { get; set; }
@@ -110,15 +117,16 @@ public class JoinAcceptPacket : INetSerializable {
     public PlayerState[] otherPlayerStates { get; set; }
     public ItemState[] itemStates { get; set; }
     public GridTileState[] gridTiles { get; set; }
-    
+
     public void Serialize(NetDataWriter writer)
     {
-        writer.Put(targetClientId);  // Serialize target client ID first
+        writer.Put(targetClientId); // Serialize target client ID first
+        writer.Put(clientNonce);
         AsyncPacketProcessor.SerializeRectangle(writer, gameArea);
         AsyncPacketProcessor.SerializeRectangle(writer, playerHitbox);
         AsyncPacketProcessor.SerializePlayerState(writer, playerState);
         AsyncPacketProcessor.SerializeVector2(writer, playerVelocity);
-        
+
         // Serialize arrays with length prefix and null safety
         writer.Put((ushort)(otherPlayerStates?.Length ?? 0));
         if (otherPlayerStates != null)
@@ -126,14 +134,14 @@ public class JoinAcceptPacket : INetSerializable {
             foreach (var state in otherPlayerStates)
                 AsyncPacketProcessor.SerializePlayerState(writer, state);
         }
-            
+
         writer.Put((ushort)(itemStates?.Length ?? 0));
         if (itemStates != null)
         {
             foreach (var state in itemStates)
                 AsyncPacketProcessor.SerializeItemState(writer, state);
         }
-        
+
         writer.Put((ushort)(gridTiles?.Length ?? 0));
         if (gridTiles != null)
         {
@@ -141,15 +149,16 @@ public class JoinAcceptPacket : INetSerializable {
                 AsyncPacketProcessor.SerializeGridTileState(writer, t);
         }
     }
-    
+
     public void Deserialize(NetDataReader reader)
     {
-        targetClientId = reader.GetUInt();  // Deserialize target client ID first
+        targetClientId = reader.GetUInt(); // Deserialize target client ID first
+        clientNonce = reader.GetString();
         gameArea = AsyncPacketProcessor.DeserializeRectangle(reader);
         playerHitbox = AsyncPacketProcessor.DeserializeRectangle(reader);
         playerState = AsyncPacketProcessor.DeserializePlayerState(reader);
         playerVelocity = AsyncPacketProcessor.DeserializeVector2(reader);
-        
+
         // Deserialize arrays with length prefix and null safety
         ushort otherPlayerCount = reader.GetUShort();
         otherPlayerStates = otherPlayerCount > 0 ? new PlayerState[otherPlayerCount] : null;
@@ -166,7 +175,7 @@ public class JoinAcceptPacket : INetSerializable {
             for (int i = 0; i < itemCount; i++)
                 itemStates[i] = AsyncPacketProcessor.DeserializeItemState(reader);
         }
-        
+
         ushort tileCount = reader.GetUShort();
         gridTiles = tileCount > 0 ? new GridTileState[tileCount] : null;
         if (gridTiles != null)
@@ -175,36 +184,38 @@ public class JoinAcceptPacket : INetSerializable {
                 gridTiles[i] = AsyncPacketProcessor.DeserializeGridTileState(reader);
         }
     }
-}   
+}
 
-public class PlayerSendUpdatePacket : INetSerializable {
-    public uint playerId { get; set; }  // Add player ID for relay identification
+public class PlayerSendUpdatePacket : INetSerializable
+{
+    public uint playerId { get; set; } // Add player ID for relay identification
     public Vector2 coords { get; set; }
     public Vector2 velocity { get; set; }
     public float dt { get; set; }
-    
+
     public void Serialize(NetDataWriter writer)
     {
-        writer.Put(playerId);  // Serialize player ID first
+        writer.Put(playerId); // Serialize player ID first
         writer.Put(coords.X);
         writer.Put(coords.Y);
         writer.Put(velocity.X);
         writer.Put(velocity.Y);
         writer.Put(dt);
     }
-    
+
     public void Deserialize(NetDataReader reader)
     {
-        playerId = reader.GetUInt();  // Deserialize player ID first
+        playerId = reader.GetUInt(); // Deserialize player ID first
         coords = new Vector2(reader.GetFloat(), reader.GetFloat());
         velocity = new Vector2(reader.GetFloat(), reader.GetFloat());
         dt = reader.GetFloat();
     }
 }
 
-public class PlayerReceiveUpdatePacket : INetSerializable {
+public class PlayerReceiveUpdatePacket : INetSerializable
+{
     public PlayerState[] playerStates { get; set; }
-    
+
     public void Serialize(NetDataWriter writer)
     {
         // Serialize player states array with length prefix and null safety
@@ -215,7 +226,7 @@ public class PlayerReceiveUpdatePacket : INetSerializable {
                 AsyncPacketProcessor.SerializePlayerState(writer, state);
         }
     }
-    
+
     public void Deserialize(NetDataReader reader)
     {
         // Deserialize player states array with length prefix and null safety
@@ -229,8 +240,9 @@ public class PlayerReceiveUpdatePacket : INetSerializable {
     }
 }
 
-public class PlayerJoinedGamePacket : INetSerializable {
-    public string new_player_username{ get; set; }
+public class PlayerJoinedGamePacket : INetSerializable
+{
+    public string new_player_username { get; set; }
     public PlayerState new_player_state { get; set; }
     public Rectangle new_player_hitbox { get; set; }
 
@@ -240,7 +252,7 @@ public class PlayerJoinedGamePacket : INetSerializable {
         AsyncPacketProcessor.SerializePlayerState(writer, new_player_state);
         AsyncPacketProcessor.SerializeRectangle(writer, new_player_hitbox);
     }
-    
+
     public void Deserialize(NetDataReader reader)
     {
         new_player_username = reader.GetString();
@@ -249,23 +261,25 @@ public class PlayerJoinedGamePacket : INetSerializable {
     }
 }
 
-public class PlayerLeftGamePacket : INetSerializable {
+public class PlayerLeftGamePacket : INetSerializable
+{
     public uint pid { get; set; }
-    
+
     public void Serialize(NetDataWriter writer)
     {
         writer.Put(pid);
     }
-    
+
     public void Deserialize(NetDataReader reader)
     {
         pid = reader.GetUInt();
     }
 }
 
-public class ItemUpdatePacket : INetSerializable {
+public class ItemUpdatePacket : INetSerializable
+{
     public ItemState[] itemStates { get; set; }
-    
+
     public void Serialize(NetDataWriter writer)
     {
         writer.Put((ushort)(itemStates?.Length ?? 0));
@@ -275,7 +289,7 @@ public class ItemUpdatePacket : INetSerializable {
                 AsyncPacketProcessor.SerializeItemState(writer, state);
         }
     }
-    
+
     public void Deserialize(NetDataReader reader)
     {
         ushort itemCount = reader.GetUShort();
@@ -310,16 +324,27 @@ public class ItemRemovedPacket : INetSerializable
 // Dedicated packet for game world initialization - contains only basic world info
 public class GameWorldInitPacket : INetSerializable
 {
-    public uint targetClientId { get; set; }  // Target client ID for packet filtering
+    public uint targetClientId { get; set; } // Target client ID for packet filtering
     public Rectangle gameArea { get; set; }
+    public uint worldVersion { get; set; } // Monotonic version/id for world snapshot
+    public PlayerState[] playerStates { get; set; } // Initial players in world
     public ItemState[] itemStates { get; set; }
     public GridTileState[] gridTiles { get; set; }
-    
+
     public void Serialize(NetDataWriter writer)
     {
-        writer.Put(targetClientId);  // Serialize target client ID first
+        writer.Put(targetClientId); // Serialize target client ID first
         AsyncPacketProcessor.SerializeRectangle(writer, gameArea);
-        
+        writer.Put(worldVersion);
+
+        // Serialize player states
+        writer.Put((ushort)(playerStates?.Length ?? 0));
+        if (playerStates != null)
+        {
+            foreach (var ps in playerStates)
+                AsyncPacketProcessor.SerializePlayerState(writer, ps);
+        }
+
         // Serialize item states
         writer.Put((ushort)(itemStates?.Length ?? 0));
         if (itemStates != null)
@@ -327,7 +352,7 @@ public class GameWorldInitPacket : INetSerializable
             foreach (var state in itemStates)
                 AsyncPacketProcessor.SerializeItemState(writer, state);
         }
-        
+
         writer.Put((ushort)(gridTiles?.Length ?? 0));
         if (gridTiles != null)
         {
@@ -335,12 +360,22 @@ public class GameWorldInitPacket : INetSerializable
                 AsyncPacketProcessor.SerializeGridTileState(writer, t);
         }
     }
-    
+
     public void Deserialize(NetDataReader reader)
     {
-        targetClientId = reader.GetUInt();  // Deserialize target client ID first
+        targetClientId = reader.GetUInt(); // Deserialize target client ID first
         gameArea = AsyncPacketProcessor.DeserializeRectangle(reader);
-        
+        worldVersion = reader.GetUInt();
+
+        // Deserialize player states
+        ushort playerCount = reader.GetUShort();
+        playerStates = playerCount > 0 ? new PlayerState[playerCount] : null;
+        if (playerStates != null)
+        {
+            for (int i = 0; i < playerCount; i++)
+                playerStates[i] = AsyncPacketProcessor.DeserializePlayerState(reader);
+        }
+
         // Deserialize item states
         ushort itemCount = reader.GetUShort();
         itemStates = itemCount > 0 ? new ItemState[itemCount] : null;
@@ -349,7 +384,7 @@ public class GameWorldInitPacket : INetSerializable
             for (int i = 0; i < itemCount; i++)
                 itemStates[i] = AsyncPacketProcessor.DeserializeItemState(reader);
         }
-        
+
         ushort tileCount = reader.GetUShort();
         gridTiles = tileCount > 0 ? new GridTileState[tileCount] : null;
         if (gridTiles != null)
@@ -375,13 +410,13 @@ public class ItemPickupRequestPacket : INetSerializable
 {
     public uint playerId { get; set; }
     public uint itemId { get; set; }
-    
+
     public void Serialize(NetDataWriter writer)
     {
         writer.Put(playerId);
         writer.Put(itemId);
     }
-    
+
     public void Deserialize(NetDataReader reader)
     {
         playerId = reader.GetUInt();
@@ -394,9 +429,9 @@ public class ItemPickupBroadcastPacket : INetSerializable
 {
     public uint playerId { get; set; }
     public uint itemId { get; set; }
-    public byte itemType { get; set; }  // ItemType enum as byte
-    public bool success { get; set; }  // Whether pickup was successful
-    
+    public byte itemType { get; set; } // ItemType enum as byte
+    public bool success { get; set; } // Whether pickup was successful
+
     public void Serialize(NetDataWriter writer)
     {
         writer.Put(playerId);
@@ -404,7 +439,7 @@ public class ItemPickupBroadcastPacket : INetSerializable
         writer.Put(itemType);
         writer.Put(success);
     }
-    
+
     public void Deserialize(NetDataReader reader)
     {
         playerId = reader.GetUInt();
@@ -418,10 +453,10 @@ public class ItemPickupBroadcastPacket : INetSerializable
 public class ItemDropRequestPacket : INetSerializable
 {
     public uint playerId { get; set; }
-    public byte itemType { get; set; }  // ItemType enum as byte
+    public byte itemType { get; set; } // ItemType enum as byte
     public Vector2 dropPosition { get; set; }
     public Vector2 dropVelocity { get; set; }
-    
+
     public void Serialize(NetDataWriter writer)
     {
         writer.Put(playerId);
@@ -429,7 +464,7 @@ public class ItemDropRequestPacket : INetSerializable
         AsyncPacketProcessor.SerializeVector2(writer, dropPosition);
         AsyncPacketProcessor.SerializeVector2(writer, dropVelocity);
     }
-    
+
     public void Deserialize(NetDataReader reader)
     {
         playerId = reader.GetUInt();
@@ -443,10 +478,10 @@ public class ItemDropRequestPacket : INetSerializable
 public class ItemDropBroadcastPacket : INetSerializable
 {
     public uint playerId { get; set; }
-    public byte itemType { get; set; }  // ItemType enum as byte
-    public uint newItemId { get; set; }  // ID of the newly spawned item in world
-    public ItemState newItemState { get; set; }  // Full state of the new item
-    
+    public byte itemType { get; set; } // ItemType enum as byte
+    public uint newItemId { get; set; } // ID of the newly spawned item in world
+    public ItemState newItemState { get; set; } // Full state of the new item
+
     public void Serialize(NetDataWriter writer)
     {
         writer.Put(playerId);
@@ -454,7 +489,7 @@ public class ItemDropBroadcastPacket : INetSerializable
         writer.Put(newItemId);
         AsyncPacketProcessor.SerializeItemState(writer, newItemState);
     }
-    
+
     public void Deserialize(NetDataReader reader)
     {
         playerId = reader.GetUInt();
@@ -468,14 +503,14 @@ public class ItemDropBroadcastPacket : INetSerializable
 public class ItemUseRequestPacket : INetSerializable
 {
     public uint playerId { get; set; }
-    public byte itemType { get; set; }  // ItemType enum as byte
-    
+    public byte itemType { get; set; } // ItemType enum as byte
+
     public void Serialize(NetDataWriter writer)
     {
         writer.Put(playerId);
         writer.Put(itemType);
     }
-    
+
     public void Deserialize(NetDataReader reader)
     {
         playerId = reader.GetUInt();
@@ -487,14 +522,14 @@ public class ItemUseRequestPacket : INetSerializable
 public class ItemUseBroadcastPacket : INetSerializable
 {
     public uint playerId { get; set; }
-    public byte itemType { get; set; }  // ItemType enum as byte
-    
+    public byte itemType { get; set; } // ItemType enum as byte
+
     public void Serialize(NetDataWriter writer)
     {
         writer.Put(playerId);
         writer.Put(itemType);
     }
-    
+
     public void Deserialize(NetDataReader reader)
     {
         playerId = reader.GetUInt();

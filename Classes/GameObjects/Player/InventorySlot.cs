@@ -10,23 +10,23 @@ public class InventorySlot
 {
     public ItemType? ItemType { get; private set; }
     public int Count { get; private set; }
-    
+
     public InventorySlot()
     {
         ItemType = null;
         Count = 0;
     }
-    
+
     /// <summary>
     /// Check if this slot is empty
     /// </summary>
     public bool IsEmpty() => ItemType == null || Count <= 0;
-    
+
     /// <summary>
     /// Check if this slot contains the specified item type
     /// </summary>
     public bool ContainsItemType(ItemType itemType) => ItemType == itemType && Count > 0;
-    
+
     /// <summary>
     /// Add an item of the specified type to this slot
     /// Returns true if successful, false if slot already contains a different item type
@@ -46,15 +46,16 @@ public class InventorySlot
         }
         return false;
     }
-    
+
     /// <summary>
     /// Remove one item from this slot
     /// Returns true if successful, false if slot is empty
     /// </summary>
     public bool RemoveItem()
     {
-        if (IsEmpty()) return false;
-        
+        if (IsEmpty())
+            return false;
+
         Count--;
         if (Count <= 0)
         {
@@ -62,7 +63,7 @@ public class InventorySlot
         }
         return true;
     }
-    
+
     /// <summary>
     /// Remove all items from this slot
     /// </summary>
@@ -71,12 +72,12 @@ public class InventorySlot
         ItemType = null;
         Count = 0;
     }
-    
+
     /// <summary>
     /// Get the current count of items in this slot
     /// </summary>
     public int GetCount() => Count;
-    
+
     /// <summary>
     /// Get the item type stored in this slot (null if empty)
     /// </summary>

@@ -1,6 +1,6 @@
-using CasinoRoyale.Classes.GameObjects.Platforms;
 using System;
 using System.Collections.Generic;
+using CasinoRoyale.Classes.GameObjects.Platforms;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 
@@ -59,7 +59,8 @@ public class GridManager
                     overlap.X - rect.X,
                     overlap.Y - rect.Y,
                     overlap.Width,
-                    overlap.Height);
+                    overlap.Height
+                );
 
                 gridTiles[tx][ty] = new GridTile(type, overlap, texture, source, isSolid);
             }
@@ -82,16 +83,30 @@ public class GridManager
     }
 
     // Tile a base texture across an arbitrary area, wrapping the source as needed
-    public void AddTiledArea(GridTileType type, Texture2D texture, Vector2 coords, int width, int height, bool isSolid)
+    public void AddTiledArea(
+        GridTileType type,
+        Texture2D texture,
+        Vector2 coords,
+        int width,
+        int height,
+        bool isSolid
+    )
     {
-        if (texture == null) return;
+        if (texture == null)
+            return;
 
         var areaRect = new Rectangle((int)coords.X, (int)coords.Y, width, height);
 
         int startTileX = Math.Max(0, (int)Math.Floor(coords.X / tileSize));
         int startTileY = Math.Max(0, (int)Math.Floor(coords.Y / tileSize));
-        int endTileX = Math.Min(gridTiles.Length - 1, (int)Math.Floor(((coords.X + width - 1) / tileSize)));
-        int endTileY = Math.Min(gridTiles[0].Length - 1, (int)Math.Floor(((coords.Y + height - 1) / tileSize)));
+        int endTileX = Math.Min(
+            gridTiles.Length - 1,
+            (int)Math.Floor(((coords.X + width - 1) / tileSize))
+        );
+        int endTileY = Math.Min(
+            gridTiles[0].Length - 1,
+            (int)Math.Floor(((coords.Y + height - 1) / tileSize))
+        );
 
         for (int tx = startTileX; tx <= endTileX; tx++)
         {
@@ -99,13 +114,16 @@ public class GridManager
             {
                 var cellRect = new Rectangle(tx * tileSize, ty * tileSize, tileSize, tileSize);
                 Rectangle overlap = Rectangle.Intersect(cellRect, areaRect);
-                if (overlap.Width <= 0 || overlap.Height <= 0) continue;
+                if (overlap.Width <= 0 || overlap.Height <= 0)
+                    continue;
 
                 // Compute source rectangle with texture wrapping
                 int srcX = (overlap.X - areaRect.X) % texture.Width;
-                if (srcX < 0) srcX += texture.Width;
+                if (srcX < 0)
+                    srcX += texture.Width;
                 int srcY = (overlap.Y - areaRect.Y) % texture.Height;
-                if (srcY < 0) srcY += texture.Height;
+                if (srcY < 0)
+                    srcY += texture.Height;
 
                 var source = new Rectangle(srcX, srcY, overlap.Width, overlap.Height);
                 gridTiles[tx][ty] = new GridTile(type, overlap, texture, source, isSolid);
@@ -126,7 +144,8 @@ public class GridManager
             for (int y = 0; y < gridTiles[x].Length; y++)
             {
                 var tile = gridTiles[x][y];
-                if (tile != null) yield return tile;
+                if (tile != null)
+                    yield return tile;
             }
         }
     }
@@ -152,11 +171,18 @@ public class GridManager
     }
 
     // Place a single tile instance reconstructed from network/state
-    public void PlaceTile(GridTileType type, Rectangle dest, Texture2D texture, Rectangle source, bool isSolid)
+    public void PlaceTile(
+        GridTileType type,
+        Rectangle dest,
+        Texture2D texture,
+        Rectangle source,
+        bool isSolid
+    )
     {
         int tx = dest.X / tileSize;
         int ty = dest.Y / tileSize;
-        if (tx < 0 || ty < 0 || tx >= gridTiles.Length || ty >= gridTiles[0].Length) return;
+        if (tx < 0 || ty < 0 || tx >= gridTiles.Length || ty >= gridTiles[0].Length)
+            return;
         gridTiles[tx][ty] = new GridTile(type, dest, texture, source, isSolid);
     }
 }

@@ -2,16 +2,21 @@ using System.Collections.Generic;
 using CasinoRoyale.Classes.GameObjects;
 using CasinoRoyale.Classes.GameObjects.Items;
 using CasinoRoyale.Classes.GameObjects.Platforms;
+using CasinoRoyale.Classes.GameObjects.Player;
 using CasinoRoyale.Classes.MonogameMethodExtensions;
 using CasinoRoyale.Utils;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Content;
 using Microsoft.Xna.Framework.Graphics;
-using CasinoRoyale.Classes.GameObjects.Player;
 
 namespace CasinoRoyale.Classes.GameUtilities;
 
-public class Artist(ContentManager content, SpriteBatch spriteBatch, MainCamera camera, Vector2 ratio)
+public class Artist(
+    ContentManager content,
+    SpriteBatch spriteBatch,
+    MainCamera camera,
+    Vector2 ratio
+)
 {
     private readonly ContentManager content = content;
     private readonly SpriteBatch spriteBatch = spriteBatch;
@@ -21,14 +26,19 @@ public class Artist(ContentManager content, SpriteBatch spriteBatch, MainCamera 
     // Draw grid tiles (new system)
     public void DrawGridTiles(IEnumerable<GridTile> tiles)
     {
-        if (spriteBatch == null || camera == null || tiles == null) return;
+        if (spriteBatch == null || camera == null || tiles == null)
+            return;
 
         foreach (var tile in tiles)
         {
-            if (tile?.Texture == null) continue;
+            if (tile?.Texture == null)
+                continue;
             // Draw each tile using its source and destination
             var dest = camera.TransformToView(tile.Hitbox.Location.ToVector2());
-            var destRect = new Rectangle(dest.ToPoint(), new Point(tile.Hitbox.Width, tile.Hitbox.Height));
+            var destRect = new Rectangle(
+                dest.ToPoint(),
+                new Point(tile.Hitbox.Width, tile.Hitbox.Height)
+            );
             spriteBatch.Draw(tile.Texture, destRect, tile.Source, Color.White);
         }
     }
@@ -52,7 +62,6 @@ public class Artist(ContentManager content, SpriteBatch spriteBatch, MainCamera 
 
         foreach (var item in Items)
         {
-
             if (item.Texture != null)
             {
                 spriteBatch.DrawEntity(camera, item);

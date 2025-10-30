@@ -12,7 +12,7 @@ public interface IItemUseStrategy
     /// Execute the use behavior for this item
     /// </summary>
     void Execute(PlayableCharacter player, ItemType itemType);
-    
+
     /// <summary>
     /// Get a description of what this strategy does
     /// </summary>

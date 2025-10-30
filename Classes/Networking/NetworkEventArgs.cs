@@ -24,7 +24,8 @@ public class PlayerLeftEventArgs(uint playerId) : NetworkEventArgs
 }
 
 // Event arguments for when a packet is received
-public class PacketReceivedEventArgs<T>(T packet, NetPeer peer) : NetworkEventArgs where T : INetSerializable
+public class PacketReceivedEventArgs<T>(T packet, NetPeer peer) : NetworkEventArgs
+    where T : INetSerializable
 {
     public T Packet { get; } = packet;
     public NetPeer Peer { get; } = peer;

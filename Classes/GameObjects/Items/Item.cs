@@ -12,34 +12,66 @@ namespace CasinoRoyale.Classes.GameObjects.Items;
 public enum ItemType
 {
     COIN,
-    SWORD
+    SWORD,
 }
 
 // Abstract base class for all items
-public abstract class Item(uint itemId, ItemType itemType, Texture2D tex, Vector2 coords, Vector2 startVelocity, float mass = 10.0f, float elasticity = 0.5f)
-: GameEntity(coords, startVelocity, new Rectangle(coords.ToPoint(), new Point(tex.Bounds.Width, tex.Bounds.Height)), true, mass),
-IDrawable
+public abstract class Item(
+    uint itemId,
+    ItemType itemType,
+    Texture2D tex,
+    Vector2 coords,
+    Vector2 startVelocity,
+    float mass = 10.0f,
+    float elasticity = 0.5f
+)
+    : GameEntity(
+        coords,
+        startVelocity,
+        new Rectangle(coords.ToPoint(), new Point(tex.Bounds.Width, tex.Bounds.Height)),
+        true,
+        mass
+    ),
+        IDrawable
 {
     // Item
     private readonly uint itemId = itemId;
-    public uint ItemId { get => itemId; }
+    public uint ItemId
+    {
+        get => itemId;
+    }
     private readonly ItemType itemType = itemType;
     public ItemType ItemType => itemType;
     private readonly float elasticity = elasticity;
     private float lifetime = 0;
-    public float Lifetime { get => lifetime; }
+    public float Lifetime
+    {
+        get => lifetime;
+    }
 
     // IDrawable
     private Texture2D tex = tex;
-    public Texture2D Texture { get => tex; set => tex = value; }
-    
+    public Texture2D Texture
+    {
+        get => tex;
+        set => tex = value;
+    }
+
     public virtual void Update(float dt, Rectangle gameArea, IEnumerable<Rectangle> tileRects)
     {
         // Use the new generic physics system
-        var physicsResult = PhysicsSystem.UpdatePhysics(gameArea, tileRects, Coords, Velocity, Hitbox, Mass, dt);
+        var physicsResult = PhysicsSystem.UpdatePhysics(
+            gameArea,
+            tileRects,
+            Coords,
+            Velocity,
+            Hitbox,
+            Mass,
+            dt
+        );
         Coords = physicsResult.newPosition;
         Velocity = physicsResult.newVelocity;
-        
+
         // Apply elasticity when grounded (bounce with reduced velocity)
         if (physicsResult.isGrounded)
         {
@@ -57,7 +89,7 @@ IDrawable
     public void Destroy() => DestroyEntity();
 
     public abstract void Collect();
-    
+
     public ItemState GetState()
     {
         return new ItemState
@@ -65,7 +97,7 @@ IDrawable
             objectType = ObjectType.ITEM,
             itemType = itemType,
             itemId = itemId,
-            gameEntityState = GetEntityState()
+            gameEntityState = GetEntityState(),
         };
     }
 

@@ -11,9 +11,9 @@ public static class ItemStrategyFactory
     private static readonly Dictionary<ItemType, IItemUseStrategy> strategies = new()
     {
         { ItemType.COIN, new CoinUseStrategy() },
-        { ItemType.SWORD, new SwordUseStrategy() }
+        { ItemType.SWORD, new SwordUseStrategy() },
     };
-    
+
     /// <summary>
     /// Get the use strategy for a specific item type
     /// </summary>
@@ -23,11 +23,11 @@ public static class ItemStrategyFactory
         {
             return strategy;
         }
-        
+
         // Default strategy if none found
         return new DefaultUseStrategy();
     }
-    
+
     /// <summary>
     /// Register a custom strategy for an item type
     /// </summary>
@@ -42,11 +42,14 @@ public static class ItemStrategyFactory
 /// </summary>
 public class DefaultUseStrategy : IItemUseStrategy
 {
-    public void Execute(CasinoRoyale.Classes.GameObjects.Player.PlayableCharacter player, ItemType itemType)
+    public void Execute(
+        CasinoRoyale.Classes.GameObjects.Player.PlayableCharacter player,
+        ItemType itemType
+    )
     {
         Utils.Logger.Info($"Item {itemType} has no specific use behavior defined");
     }
-    
+
     public string GetDescription()
     {
         return "No specific use";

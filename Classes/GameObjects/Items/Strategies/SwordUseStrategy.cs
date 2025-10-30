@@ -16,10 +16,12 @@ public class SwordUseStrategy : IItemUseStrategy
         if (inventory != null)
         {
             int swordCount = inventory.GetItemCount(ItemType.SWORD);
-            Logger.Info($"Player {player.GetUsername()} swung their sword! (Has {swordCount} swords)");
+            Logger.Info(
+                $"Player {player.GetUsername()} swung their sword! (Has {swordCount} swords)"
+            );
         }
     }
-    
+
     public string GetDescription()
     {
         return "Swing sword to attack";

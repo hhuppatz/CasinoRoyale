@@ -13,7 +13,7 @@ public interface IUsable
     /// </summary>
     /// <param name="player">The player using the item</param>
     void Use(PlayableCharacter player);
-    
+
     /// <summary>
     /// Get a description of what this item does when used
     /// </summary>

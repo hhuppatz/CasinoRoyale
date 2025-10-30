@@ -1,7 +1,7 @@
 using System;
-using CasinoRoyale.Classes.GameObjects.Player;
-using CasinoRoyale.Classes.GameObjects.Platforms;
 using CasinoRoyale.Classes.GameObjects.Items;
+using CasinoRoyale.Classes.GameObjects.Platforms;
+using CasinoRoyale.Classes.GameObjects.Player;
 
 namespace CasinoRoyale.Classes.Networking;
 
@@ -19,7 +19,10 @@ public interface INetworkEventHandler
     event EventHandler<PacketReceivedEventArgs<PlayerSendUpdatePacket>> PlayerUpdateReceived;
     event EventHandler<PacketReceivedEventArgs<JoinPacket>> JoinRequestReceived;
     event EventHandler<PacketReceivedEventArgs<JoinAcceptPacket>> JoinAcceptReceived;
-    event EventHandler<PacketReceivedEventArgs<PlayerReceiveUpdatePacket>> PlayerStatesUpdateReceived;
+    event EventHandler<
+        PacketReceivedEventArgs<PlayerReceiveUpdatePacket>
+    > PlayerStatesUpdateReceived;
+
     // Platform update event removed with grid migration
     event EventHandler<PacketReceivedEventArgs<ItemUpdatePacket>> ItemSpawnedReceived;
     event EventHandler<PacketReceivedEventArgs<ItemRemovedPacket>> ItemRemovedReceived;
