@@ -1,10 +1,10 @@
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 
-namespace CasinoRoyale.Utils
-{
-    // From the Monogame tutorials
-    public static class Resolution
+namespace CasinoRoyale.Utils;
+
+// From the Monogame tutorials
+public static class Resolution
 {
     private static bool _isFullscreen = false;
     private static bool _isBorderless = false;
@@ -76,5 +76,4 @@ namespace CasinoRoyale.Utils
         _graphics.IsFullScreen = false;
         _graphics.ApplyChanges();
     }
-}
 }

@@ -22,5 +22,3 @@ echo Instance 1 started!
 echo ========================================
 echo.
 echo You can choose to Host or Join a game.
-echo This terminal will close automatically in 3 seconds...
-timeout /t 3 /nobreak >nul

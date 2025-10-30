@@ -2,12 +2,13 @@ using System;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using CasinoRoyale.Classes.GameStates;
+using CasinoRoyale.Classes.GameStates.Interfaces;
 using CasinoRoyale.Utils;
 
-namespace CasinoRoyale
-{
-    // Unified game class that manages different game states
-    public class CasinoRoyaleGame : Game, IGameStateManager
+namespace CasinoRoyale;
+
+// Unified game class that manages different game states
+public class CasinoRoyaleGame : Game, IGameStateManager
     {
         private GraphicsDeviceManager _graphics;
         private GameState _currentState;
@@ -25,7 +26,6 @@ namespace CasinoRoyale
         protected override void Initialize()
         {
             Logger.Initialize();
-            Logger.Info("Casino Royale Game initializing...");
             
             base.Initialize();
         }
@@ -68,21 +68,12 @@ namespace CasinoRoyale
         // Returns to the main menu (implements IGameStateManager)
         public void ReturnToMenu()
         {
-            Logger.Info("Returning to main menu...");
             TransitionToState(new MenuGameState(this, this));
-        }
-        
-        // Sets the current game state (legacy method - use TransitionToState instead)
-        [Obsolete("Use TransitionToState instead")]
-        public void SetState(GameState newState)
-        {
-            TransitionToState(newState);
         }
         
         // Starts hosting a game (convenience method for external use)
         public void StartHost()
         {
-            Logger.Info("Starting Host game...");
             var hostState = new HostGameState(this, this);
             TransitionToState(hostState);
         }
@@ -90,7 +81,6 @@ namespace CasinoRoyale
         // Joins a game with the specified lobby code (convenience method for external use)
         public void JoinGame(string lobbyCode)
         {
-            Logger.Info($"Joining game with lobby code: {lobbyCode}");
             var clientState = new ClientGameState(this, this, lobbyCode);
             TransitionToState(clientState);
         }
@@ -105,4 +95,3 @@ namespace CasinoRoyale
             base.Dispose(disposing);
         }
     }
-}

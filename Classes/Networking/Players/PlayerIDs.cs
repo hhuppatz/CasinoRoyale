@@ -1,8 +1,8 @@
 using System.Collections.Generic;
 
-namespace CasinoRoyale.Classes.Networking
-{
-    public class PlayerIDs
+namespace CasinoRoyale.Classes.Networking.Players;
+
+public class PlayerIDs
     {
         private readonly uint MAX_PLAYERS;
         private readonly Dictionary<uint, bool> ids;
@@ -53,4 +53,3 @@ namespace CasinoRoyale.Classes.Networking
             return ids[id];
         }
     }
-}

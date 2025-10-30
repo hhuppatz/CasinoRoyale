@@ -1,15 +1,19 @@
 using System;
-using LiteNetLib.Utils;
 using Microsoft.Xna.Framework;
 using CasinoRoyale.Classes.GameObjects.Interfaces;
 using CasinoRoyale.Classes.Networking;
+using LiteNetLib.Utils;
 
 namespace CasinoRoyale.Classes.GameObjects;
 
-public abstract class GameEntity : IObject, IHitbox, IMovement
+public abstract class GameEntity : IObject, IHitbox, INetworkObject
 {
     private event EventHandler<EntityMovementEventArgs> MovementEvent;
-    
+    public event Action<string, INetSerializable> OnChanged;
+    private readonly NetworkComponent _network;
+    private uint _networkObjectId;
+    public uint NetworkObjectId { get => _networkObjectId; set => _networkObjectId = value; }
+
     private bool awake;
     private bool destroyed = false;
     public bool Destroyed { get => destroyed; set { destroyed = value; MarkAsChanged(); } }
@@ -27,7 +31,7 @@ public abstract class GameEntity : IObject, IHitbox, IMovement
     public float Mass { get => mass; set { mass = value; MarkAsChanged(); } }
 
     private bool _hasChanged = false;
-    public bool HasChanged { get => _hasChanged; private set => _hasChanged = value; }
+    public bool HasChanged { get => _hasChanged; set => _hasChanged = value; }
 
     public GameEntity(Vector2 coords, Vector2 velocity, Rectangle hitbox, bool awake, float mass = 1.0f) {
         this.awake = awake;
@@ -36,6 +40,7 @@ public abstract class GameEntity : IObject, IHitbox, IMovement
         Hitbox = hitbox;
         Mass = mass;
         MovementEvent += UpdateHitbox;
+        _network = new NetworkComponent(this);
     }
 
     public void Move(float dt)
@@ -74,11 +79,17 @@ public abstract class GameEntity : IObject, IHitbox, IMovement
     public void MarkAsChanged()
     {
         HasChanged = true;
+        OnChanged?.Invoke("state", null);
     }
 
     public void ClearChangedFlag()
     {
         HasChanged = false;
+    }
+
+    public bool CollidedWith(IHitbox c)
+    {
+        return Hitbox.Intersects(c.Hitbox);
     }
 
     public GameEntityState GetEntityState()
@@ -92,28 +103,12 @@ public abstract class GameEntity : IObject, IHitbox, IMovement
     }
 }
 
-public struct GameEntityState : INetSerializable
+public struct GameEntityState
 {
     public bool awake;
     public Vector2 coords;
     public Vector2 velocity;
     public float mass;
-
-    public void Serialize(NetDataWriter writer)
-    {
-        writer.Put(awake);
-        writer.Put(coords);
-        writer.Put(velocity);
-        writer.Put(mass);
-    }
-
-    public void Deserialize(NetDataReader reader)
-    {
-        awake = reader.GetBool();
-        coords = reader.GetVector2();
-        velocity = reader.GetVector2();
-        mass = reader.GetFloat();
-    }
 }
 
 public class EntityMovementEventArgs : EventArgs

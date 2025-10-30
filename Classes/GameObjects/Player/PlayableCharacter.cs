@@ -6,27 +6,25 @@ using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using CasinoRoyale.Classes.Networking;
+using CasinoRoyale.Classes.Networking.SerializingExtensions;
 using CasinoRoyale.Classes.GameSystems;
-using CasinoRoyale.Classes.GameObjects.Platforms;
-using CasinoRoyale.Classes.GameObjects.CasinoMachines;
-using CasinoRoyale.Classes.GameObjects.Items;
+using CasinoRoyale.Classes.GameObjects.Interfaces;
 
-namespace CasinoRoyale.Classes.GameObjects
+namespace CasinoRoyale.Classes.GameObjects.Player;
+
+public class PlayableCharacter(uint pid, string username, Texture2D tex, Vector2 coords, Vector2 velocity, float mass, float initialJumpVelocity, float standardSpeed, Rectangle hitbox, bool awake)
+    : GameEntity(coords, velocity, hitbox, awake, mass),
+    CasinoRoyale.Classes.GameObjects.Interfaces.IDrawable,
+    IJump
 {
-    public class PlayableCharacter(uint pid, string username, Texture2D tex, Vector2 coords, Vector2 velocity, float mass, float initialJumpVelocity, float standardSpeed, Rectangle hitbox, bool awake) : GameEntity(coords, velocity, hitbox, awake, mass), CasinoRoyale.Classes.GameObjects.Interfaces.IDrawable
-{
+    // PlayableCharacter
     private readonly uint pid = pid;
     private readonly string username = username;
     private Texture2D tex = tex;
-
-    private float initialJumpVelocity = initialJumpVelocity;
-    public float InitialJumpVelocity { get => initialJumpVelocity; set => initialJumpVelocity = value; }
+    public Texture2D Texture { get => tex; set => tex = value;}
 
     private float standardSpeed = standardSpeed;
     public float StandardSpeed { get => standardSpeed; set => standardSpeed = value; }
-
-    private bool inJump = false;
-    public bool InJump { get => inJump; set => inJump = value; }
 
     // Movement interpolation fields for inbetween network updates
     private Vector2 targetCoords;
@@ -43,6 +41,13 @@ namespace CasinoRoyale.Classes.GameObjects
     
     private readonly Queue<BufferedState> stateBuffer = new(); // Queue for the state buffer
     private float currentTime = 0f;
+
+    // IJump
+    private bool inJump = false;
+    public bool InJump { get => inJump; set => inJump = value; }
+    public bool InJumpSquat { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
+    private float initialJumpVelocity = initialJumpVelocity;
+    public float InitialJumpVelocity { get => initialJumpVelocity; set => initialJumpVelocity = value; }
 
     // Method to mark new player as changed (call after construction)
     public void MarkAsNewPlayer()
@@ -76,48 +81,37 @@ namespace CasinoRoyale.Classes.GameObjects
             Velocity = new Vector2(Velocity.X * 1.5f, Velocity.Y);
         }
         
-        // Casino machine interaction is now handled by the client-side game state
+        // Casino machine interaction removed
 
         // Update velocity according to forces and movement requests
         UpdateJump(m_playerAttemptedJump, gameWorld);
 
-        // Enforce movement rules from physics system (this will handle collision detection)
-        PhysicsSystem.EnforceMovementRules(gameWorld.GameArea, gameWorld.WorldObjects.GetPlatforms(), this, dt);
+        // Enforce movement rules using grid tiles (new system)
+        PhysicsSystem.EnforceMovementRules(gameWorld.GameArea, gameWorld.GetPlatformTileHitboxes(), this, dt);
     }
 
     public void UpdateJump(bool m_playerAttemptedJump, GameWorld gameWorld)
     {
         // Deal with player jumping - only apply jump velocity once when jump starts
-        if (m_playerAttemptedJump && !InJump && PhysicsSystem.IsPlayerGrounded(gameWorld.GameArea, gameWorld.WorldObjects.GetPlatforms(), this))
+        if (m_playerAttemptedJump
+            && !InJump
+            && PhysicsSystem.IsPlayerGrounded(gameWorld.GameArea, gameWorld.GetPlatformTileHitboxes(), this))
         {
             // Start jump with initial velocity
             InJump = true;
             Velocity = new Vector2(0, -InitialJumpVelocity);
         }
         // Check if player has landed after falling (end jump state)
-        else if (InJump && Velocity.Y >= 0 && PhysicsSystem.IsPlayerGrounded(gameWorld.GameArea, gameWorld.WorldObjects.GetPlatforms(), this)) InJump = false;
+        else if (InJump
+                && Velocity.Y >= 0
+                && PhysicsSystem.IsPlayerGrounded(gameWorld.GameArea, gameWorld.GetPlatformTileHitboxes(), this))
+        {
+            InJump = false;
+        }
 
     }
     
-    private void TryInteractWithCasinoMachine(GameWorld gameWorld)
-    {
-        // Check if player is colliding with any casino machine
-        foreach (var machine in gameWorld.WorldObjects.GetCasinoMachines())
-        {
-            if (Hitbox.Intersects(machine.Hitbox))
-            {
-                // Player is colliding with this casino machine, request coin spawn
-                machine.SpawnedCoin = true;
-                break; // Only interact with one machine at a time
-            }
-        }
-    }
-
-    // setters
-    public void SetTex(Texture2D tex)
-    {
-        this.tex = tex;
-    }
+    // Casino machine interaction removed
 
     public void SetPlayerState(PlayerState playerState)
     {
@@ -155,8 +149,8 @@ namespace CasinoRoyale.Classes.GameObjects
             stateBuffer.Dequeue();
         }
         
-        // Apply immediately for responsiveness, but also keep in buffer for smoothing
-        SetTargetPosition(newCoords, newVelocity);
+        // Don't apply immediately - let the interpolation system handle smooth movement
+        // SetTargetPosition(newCoords, newVelocity);
     }
     
     // Process buffered states and apply delayed ones
@@ -164,7 +158,9 @@ namespace CasinoRoyale.Classes.GameObjects
     {
         currentTime += dt;
         
-        // Clean up old states from buffer
+        // Clean up old states from buffer and apply the most recent valid state
+        BufferedState? mostRecentState = null;
+        
         while (stateBuffer.Count > 0)
         {
             var oldestState = stateBuffer.Peek();
@@ -176,8 +172,16 @@ namespace CasinoRoyale.Classes.GameObjects
             }
             else
             {
+                // Keep the most recent state
+                mostRecentState = oldestState;
                 break;
             }
+        }
+        
+        // Apply the most recent valid state if we have one
+        if (mostRecentState.HasValue)
+        {
+            SetTargetPosition(mostRecentState.Value.coords, mostRecentState.Value.velocity);
         }
     }
     
@@ -203,14 +207,9 @@ namespace CasinoRoyale.Classes.GameObjects
         }
     }
 
-    // getters
     public string GetUsername()
     {
         return username;
-    }
-    public Texture2D GetTex()
-    {
-        return tex;
     }
 
     public PlayerState GetPlayerState()
@@ -232,7 +231,7 @@ namespace CasinoRoyale.Classes.GameObjects
 
 }
 
-public struct PlayerState : INetSerializable
+public struct PlayerState
 {
     public ObjectType objectType;
     public uint pid;
@@ -240,25 +239,4 @@ public struct PlayerState : INetSerializable
     public GameEntityState ges;
     public float initialJumpVelocity;
     public float maxRunSpeed;
-
-    public readonly void Serialize(NetDataWriter writer)
-    {
-        writer.Put((byte)objectType);
-        writer.Put(pid);
-        writer.Put(username);
-        writer.Put(ges);
-        writer.Put(initialJumpVelocity);
-        writer.Put(maxRunSpeed);
-    }
-
-    public void Deserialize(NetDataReader reader)
-    {
-        objectType = (ObjectType)reader.GetByte();
-        pid = reader.GetUInt();
-        username = reader.GetString();
-        ges = reader.GetGES();
-        initialJumpVelocity = reader.GetFloat();
-        maxRunSpeed = reader.GetFloat();
-    }
-}
 }

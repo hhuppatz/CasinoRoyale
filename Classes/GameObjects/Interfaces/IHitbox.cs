@@ -1,15 +1,10 @@
 using Microsoft.Xna.Framework;
 
-namespace CasinoRoyale.Classes.GameObjects.Interfaces
-{
-    public interface IHitbox
+namespace CasinoRoyale.Classes.GameObjects.Interfaces;
+
+public interface IHitbox
 {
     Rectangle Hitbox { get; set; }
 
-    public bool CollidedWith(IHitbox c)
-    {
-        return Hitbox.Intersects(c.Hitbox);
-    }
-
-}
+    public bool CollidedWith(IHitbox c);
 }

@@ -1,7 +1,8 @@
 Source File,Dest File,Processor Type,Content Type,Source File Size,Dest File Size,Build Seconds
 "c:/Users/harry/Personal Projects/CasinoRoyaleServer/Content/Arial.spritefont","c:/Users/harry/Personal Projects/CasinoRoyaleServer/Content/bin/DesktopGL/Arial.xnb","FontDescriptionProcessor","SpriteFontContent",2140,70690,0.0773094
 "c:/Users/harry/Personal Projects/CasinoRoyaleServer/Content/ball.png","c:/Users/harry/Personal Projects/CasinoRoyaleServer/Content/bin/DesktopGL/ball.xnb","TextureProcessor","Texture2DContent",8368,16469,0.0854436
-"c:/Users/harry/Personal Projects/CasinoRoyaleServer/Content/CasinoFloor1.png","c:/Users/harry/Personal Projects/CasinoRoyaleServer/Content/bin/DesktopGL/CasinoFloor1.xnb","TextureProcessor","Texture2DContent",13091,1365,0.1070912
+"c:/Users/harry/Personal Projects/CasinoRoyaleServer/Content/CasinoFloor1.png","c:/Users/harry/Personal Projects/CasinoRoyaleServer/Content/bin/DesktopGL/CasinoFloor1.xnb","TextureProcessor","Texture2DContent",141,1109,0.1438401
 "c:/Users/harry/Personal Projects/CasinoRoyaleServer/Content/CasinoMachine1.png","c:/Users/harry/Personal Projects/CasinoRoyaleServer/Content/bin/DesktopGL/CasinoMachine1.xnb","TextureProcessor","Texture2DContent",774,16469,0.0051489
 "c:/Users/harry/Personal Projects/CasinoRoyaleServer/Content/Coin.png","c:/Users/harry/Personal Projects/CasinoRoyaleServer/Content/bin/DesktopGL/Coin.xnb","TextureProcessor","Texture2DContent",114,341,0.0833074
 "c:/Users/harry/Personal Projects/CasinoRoyaleServer/Content/FirstHumanAttempt.png","c:/Users/harry/Personal Projects/CasinoRoyaleServer/Content/bin/DesktopGL/FirstHumanAttempt.xnb","TextureProcessor","Texture2DContent",369,6229,0.1320598
+"c:/Users/harry/Personal Projects/CasinoRoyaleServer/Content/Sword.png","c:/Users/harry/Personal Projects/CasinoRoyaleServer/Content/bin/DesktopGL/Sword.xnb","TextureProcessor","Texture2DContent",129,445,0.0053815

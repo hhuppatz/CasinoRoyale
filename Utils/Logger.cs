@@ -3,9 +3,9 @@ using System.IO;
 using System.Text;
 using Microsoft.Xna.Framework;
 
-namespace CasinoRoyale.Utils
-{
-    public static class Logger
+namespace CasinoRoyale.Utils;
+
+public static class Logger
     {
         private static readonly string LogDirectory = "Logs";
         private static readonly string LogFileName = "debug.log";
@@ -132,4 +132,3 @@ namespace CasinoRoyale.Utils
             Debug($"Player {playerId} physics - {physicsEvent}: {details}");
         }
     }
-}

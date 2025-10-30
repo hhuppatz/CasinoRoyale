@@ -1,10 +1,10 @@
 using Microsoft.Xna.Framework;
 using System;
-using CasinoRoyale.Classes.GameObjects.Interfaces;
+using CasinoRoyale.Classes.GameObjects.Player;
 
-namespace CasinoRoyale.Classes.GameObjects
-{
-    public sealed class MainCamera
+namespace CasinoRoyale.Classes.GameUtilities;
+
+public sealed class MainCamera
 {
     private Vector2 coords;
     private Vector2 offset;
@@ -48,5 +48,4 @@ namespace CasinoRoyale.Classes.GameObjects
     {
         return coords;
     }
-}
 }

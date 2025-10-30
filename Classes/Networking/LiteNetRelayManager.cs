@@ -1,160 +1,204 @@
 using System;
-using System.Collections.Generic;
 using System.Threading.Tasks;
+using System.Threading;
 using LiteNetLib;
 using LiteNetLib.Utils;
 using CasinoRoyale.Utils;
 
-namespace CasinoRoyale.Classes.Networking
+namespace CasinoRoyale.Classes.Networking;
+
+// Relay manager using LiteNetLib
+// Connects to a LiteNetLib relay server for lobby-based multiplayer
+public class LiteNetRelayManager : IDisposable
 {
-    /// <summary>
-    /// Simplified relay manager using pure LiteNetLib
-    /// Connects to a LiteNetLib relay server for lobby-based multiplayer
-    /// </summary>
-    public class LiteNetRelayManager : IDisposable
+    private readonly NetManager _netManager;
+    private readonly INetEventListener _gameEventListener;
+    private NetPeer _relayServerPeer;
+    private readonly string _relayServerAddress;
+    private readonly int _relayServerPort;
+    
+    // Events
+    public event Action<string> OnLobbyCodeReceived;
+    public event Action<string> OnError;
+    public event Action<byte[]> OnGamePacketReceived;
+    
+    // State
+    public string CurrentLobbyCode { get; private set; }
+    public bool IsConnected => _relayServerPeer?.ConnectionState == ConnectionState.Connected;
+    public bool IsHost { get; private set; }
+    public NetPeer RelayServerPeer => _relayServerPeer;
+        
+    public LiteNetRelayManager(INetEventListener gameEventListener, string relayServerAddress = "127.0.0.1", int relayServerPort = 9051)
     {
-        private readonly NetManager _netManager;
-        private readonly INetEventListener _gameEventListener;
-        private NetPeer _relayServerPeer;
-        private readonly string _relayServerAddress;
-        private readonly int _relayServerPort;
+        _gameEventListener = gameEventListener;
+        _relayServerAddress = relayServerAddress;
+        _relayServerPort = relayServerPort;
         
-        // Events
-        public event Action<string> OnLobbyCodeReceived;
-        public event Action<string> OnError;
-        public event Action<byte[]> OnGamePacketReceived;
-        
-        // State
-        public string CurrentLobbyCode { get; private set; }
-        public bool IsConnected => _relayServerPeer != null && _relayServerPeer.ConnectionState == ConnectionState.Connected;
-        public bool IsHost { get; private set; }
-        public NetPeer RelayServerPeer => _relayServerPeer;
-        
-        public LiteNetRelayManager(INetEventListener gameEventListener, string relayServerAddress = "127.0.0.1", int relayServerPort = 9051)
+        // Create NetManager that wraps the game's event listener
+        _netManager = new NetManager(new RelayEventListener(this, gameEventListener))
         {
-            _gameEventListener = gameEventListener;
-            _relayServerAddress = relayServerAddress;
-            _relayServerPort = relayServerPort;
+            DisconnectTimeout = 10000, // 10 seconds timeout
+            ReconnectDelay = 1000,
+            MaxConnectAttempts = 5,
+            PingInterval = 2000 // Send ping every 2 seconds
+        };
+        _netManager.Start();
+    }
+        
+    public async Task<bool> StartAsHostAsync()
+    {
+        try
+        {
+            var connected = await ConnectToRelayServer();
+            if (!connected) return false;
             
-            // Create NetManager that wraps the game's event listener
-            _netManager = new NetManager(new RelayEventListener(this, gameEventListener))
-            {
-                DisconnectTimeout = 10000, // 10 seconds timeout
-                ReconnectDelay = 1000,
-                MaxConnectAttempts = 5,
-                PingInterval = 2000 // Send ping every 2 seconds
-            };
-            _netManager.Start();
+            // Send host registration
+            var writer = new NetDataWriter();
+            writer.Put("HOST_REGISTER");
+            _relayServerPeer.Send(writer, DeliveryMethod.ReliableOrdered);
             
-            Logger.LogNetwork("RELAY_MGR", $"LiteNetRelayManager initialized, target: {_relayServerAddress}:{_relayServerPort}");
+            IsHost = true;
+            return true;
         }
-        
-        public async Task<bool> StartAsHostAsync()
+        catch (Exception ex)
         {
-            try
+            Logger.Error($"Error starting as host: {ex.Message}");
+            return false;
+        }
+    }
+        
+    public async Task<bool> JoinAsClientAsync(string lobbyCode)
+    {
+        try
+        {
+            var connected = await ConnectToRelayServer();
+            if (!connected) return false;
+            
+            // Send join request
+            var writer = new NetDataWriter();
+            writer.Put($"CLIENT_JOIN:{lobbyCode}");
+            _relayServerPeer.Send(writer, DeliveryMethod.ReliableOrdered);
+            
+            IsHost = false;
+            CurrentLobbyCode = lobbyCode;
+            return true;
+        }
+        catch (Exception ex)
+        {
+            Logger.Error($"Error joining lobby: {ex.Message}");
+            return false;
+        }
+    }
+        
+    public void PollEvents()
+    {
+        _netManager.PollEvents();
+    }
+    
+    /// <summary>
+    /// Shared connection logic to eliminate duplication
+    /// </summary>
+    private async Task<bool> ConnectToRelayServer()
+    {
+        try
+        {
+            Logger.LogNetwork("RELAY_MGR", $"Attempting to connect to relay server at {_relayServerAddress}:{_relayServerPort}");
+            
+            // Connect to relay server
+            _relayServerPeer = _netManager.Connect(_relayServerAddress, _relayServerPort, "");
+            
+            if (_relayServerPeer == null)
             {
-                Logger.LogNetwork("RELAY_MGR", "Connecting to relay server as host...");
-                
-                // Connect to relay server
-                _relayServerPeer = _netManager.Connect(_relayServerAddress, _relayServerPort, "");
-                
-                // Wait for connection with retries
-                for (int i = 0; i < 20; i++) // Try for up to 2 seconds
-                {
-                    await Task.Delay(100);
-                    _netManager.PollEvents(); // Process connection events
-                    
-                    if (_relayServerPeer != null && _relayServerPeer.ConnectionState == ConnectionState.Connected)
-                    {
-                        Logger.LogNetwork("RELAY_MGR", "Connected to relay server successfully");
-                        break;
-                    }
-                }
-                
-                if (_relayServerPeer == null || _relayServerPeer.ConnectionState != ConnectionState.Connected)
-                {
-                    Logger.Error($"Failed to connect to relay server after 2 seconds. State: {_relayServerPeer?.ConnectionState}");
-                    return false;
-                }
-                
-                // Send host registration
-                var writer = new NetDataWriter();
-                writer.Put("HOST_REGISTER");
-                _relayServerPeer.Send(writer, DeliveryMethod.ReliableOrdered);
-                
-                IsHost = true;
-                Logger.LogNetwork("RELAY_MGR", "Host registration sent");
-                
-                return true;
-            }
-            catch (Exception ex)
-            {
-                Logger.Error($"Error starting as host: {ex.Message}");
+                Logger.Error("Failed to create connection to relay server");
                 return false;
             }
-        }
-        
-        public async Task<bool> JoinAsClientAsync(string lobbyCode)
-        {
-            try
+            
+            // Use improved polling with better timing
+            var connectionTcs = new TaskCompletionSource<bool>();
+            var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(15)); // Increased timeout
+            
+            // Set up timeout
+            timeoutCts.Token.Register(() => 
             {
-                Logger.LogNetwork("RELAY_MGR", $"Connecting to relay server to join lobby: {lobbyCode}");
-                
-                // Connect to relay server
-                _relayServerPeer = _netManager.Connect(_relayServerAddress, _relayServerPort, "");
-                
-                // Wait for connection with retries
-                for (int i = 0; i < 20; i++) // Try for up to 2 seconds
+                Logger.Warning("Connection timeout reached");
+                connectionTcs.TrySetResult(false);
+            });
+            
+            // Start polling in background with improved timing
+            var pollingTask = Task.Run(async () =>
+            {
+                try
                 {
-                    await Task.Delay(100);
-                    _netManager.PollEvents(); // Process connection events
-                    
-                    if (_relayServerPeer != null && _relayServerPeer.ConnectionState == ConnectionState.Connected)
+                    int pollCount = 0;
+                    while (!connectionTcs.Task.IsCompleted && !timeoutCts.Token.IsCancellationRequested)
                     {
-                        Logger.LogNetwork("RELAY_MGR", "Connected to relay server successfully");
-                        break;
+                        _netManager.PollEvents();
+                        pollCount++;
+                        
+                        // Check if we're connected with more frequent checks
+                        if (_relayServerPeer?.ConnectionState == ConnectionState.Connected)
+                        {
+                            Logger.LogNetwork("RELAY_MGR", $"Connected to relay server after {pollCount} polls");
+                            connectionTcs.TrySetResult(true);
+                            break;
+                        }
+                        
+                        // Log progress every 100 polls (roughly every 500ms)
+                        if (pollCount % 100 == 0)
+                        {
+                            Logger.LogNetwork("RELAY_MGR", $"Still connecting... poll {pollCount}, state: {_relayServerPeer?.ConnectionState}");
+                        }
+                        
+                        await Task.Delay(5, timeoutCts.Token); // Reduced delay for faster detection
                     }
                 }
-                
-                if (_relayServerPeer == null || _relayServerPeer.ConnectionState != ConnectionState.Connected)
+                catch (OperationCanceledException)
                 {
-                    Logger.Error($"Failed to connect to relay server after 2 seconds. State: {_relayServerPeer?.ConnectionState}");
-                    return false;
+                    // Expected when timeout occurs
                 }
-                
-                // Send join request
-                var writer = new NetDataWriter();
-                writer.Put($"CLIENT_JOIN:{lobbyCode}");
-                _relayServerPeer.Send(writer, DeliveryMethod.ReliableOrdered);
-                
-                IsHost = false;
-                CurrentLobbyCode = lobbyCode;
-                Logger.LogNetwork("RELAY_MGR", $"Join request sent for lobby: {lobbyCode}");
-                
-                return true;
-            }
-            catch (Exception ex)
+            });
+            
+            // Wait for connection or timeout
+            var connected = await connectionTcs.Task;
+            
+            // Clean up
+            timeoutCts.Cancel();
+            try
             {
-                Logger.Error($"Error joining lobby: {ex.Message}");
+                await pollingTask;
+            }
+            catch (OperationCanceledException)
+            {
+                // Expected
+            }
+            timeoutCts.Dispose();
+            
+            if (!connected)
+            {
+                Logger.Error($"Failed to connect to relay server after 15 seconds. State: {_relayServerPeer?.ConnectionState}");
                 return false;
             }
+            
+            Logger.LogNetwork("RELAY_MGR", "Connected to relay server successfully");
+            return true;
         }
-        
-        public void PollEvents()
+        catch (Exception ex)
         {
-            _netManager.PollEvents();
+            Logger.Error($"Error connecting to relay server: {ex.Message}");
+            Logger.Error($"Stack trace: {ex.StackTrace}");
+            return false;
         }
+    }
+    
+    public void Dispose()
+    {
+        _netManager?.Stop();
+    }
         
-        public void Dispose()
-        {
-            _netManager?.Stop();
-            Logger.LogNetwork("RELAY_MGR", "LiteNetRelayManager disposed");
-        }
-        
-        /// <summary>
-        /// Event listener wrapper that intercepts relay server control messages
-        /// </summary>
-        private class RelayEventListener : INetEventListener
+    /// <summary>
+    /// Event listener wrapper that intercepts relay server control messages
+    /// </summary>
+    private class RelayEventListener : INetEventListener
         {
             private readonly LiteNetRelayManager _manager;
             private readonly INetEventListener _gameListener;
@@ -167,12 +211,12 @@ namespace CasinoRoyale.Classes.Networking
             
             public void OnPeerConnected(NetPeer peer)
             {
-                Logger.LogNetwork("RELAY_MGR", $"Connected to relay server: {peer.Address}:{peer.Port}");
+                // Forward the connection event to the game listener
+                _gameListener.OnPeerConnected(peer);
             }
             
             public void OnPeerDisconnected(NetPeer peer, DisconnectInfo disconnectInfo)
             {
-                Logger.LogNetwork("RELAY_MGR", $"Disconnected from relay server: {disconnectInfo.Reason}");
                 _manager.OnError?.Invoke($"Relay connection lost: {disconnectInfo.Reason}");
             }
             
@@ -185,57 +229,76 @@ namespace CasinoRoyale.Classes.Networking
             {
                 try
                 {
-                    // Check if this is a control message from relay server
+                    // Get all remaining bytes
                     var bytes = reader.GetRemainingBytes();
-                    Logger.Debug($"[RELAY] Received {bytes.Length} bytes from relay server");
                     
+                    if (bytes == null || bytes.Length == 0)
+                    {
+                        Logger.Warning("Received empty packet from relay server");
+                        reader.Recycle(); // Recycle the reader
+                        return;
+                    }
+                    
+                    // Skip very small packets that are likely control messages
+                    if (bytes.Length < 4)
+                    {
+                        Logger.LogNetwork("RELAY_LISTENER", $"Skipping small packet ({bytes.Length} bytes) - likely control message");
+                        reader.Recycle(); // Recycle the reader
+                        return;
+                    }
+                    
+                    // Try to read as string to check for control messages
                     var dataReader = new NetDataReader(bytes);
                     
-                    // Try to read as string - if it's a control message it will work
-                    var position = dataReader.Position;
                     try
                     {
                         var message = dataReader.GetString();
-                        Logger.Debug($"[RELAY] Decoded as string message: {message}");
                         
-                        // Check if it's a control message (contains ':' or is PONG)
-                        if (message.Contains(":") || message == "PONG")
+                        // Check if it's a control message (contains ':' or is a known control command)
+                        if (IsControlMessage(message))
                         {
+                            Logger.LogNetwork("RELAY_LISTENER", $"Received control message: {message}");
                             HandleControlMessage(message);
+                            reader.Recycle(); // Recycle the reader
                             return;
                         }
-                        else
-                        {
-                            Logger.Debug($"[RELAY] String message '{message}' doesn't look like a control message, treating as game packet");
-                        }
                     }
-                    catch (Exception ex)
+                    catch (Exception)
                     {
-                        Logger.Debug($"[RELAY] Not a string message (error: {ex.Message}), must be a game packet");
+                        // Not a string message, treat as game packet
                     }
                     
-                    // Forward game packets directly to the game listener
-                    // We need to create a fresh reader since the original was consumed during detection
-                    // Pass null for peer since all game packets come through the relay server peer
-                    Logger.Debug($"[RELAY] Forwarding packet to game listener (peer=null for relay)");
-                    Logger.Debug($"[RELAY] Creating fresh NetDataReader with {bytes.Length} bytes for packet processor");
+                    // Forward as game packet
+                    Logger.LogNetwork("RELAY_LISTENER", $"Forwarding game packet with {bytes.Length} bytes");
                     
-                    // Create a NetDataReader and let the game state's packet processor handle it
-                    var gameReader = new NetDataReader(bytes);
-                    
-                    // Since OnNetworkReceive expects NetPacketReader, we need a different approach
-                    // Instead, we'll expose the raw bytes through an event
+                    // Forward the raw bytes through an event to the NetworkManager
                     _manager.OnGamePacketReceived?.Invoke(bytes);
+                    
+                    // Recycle the NetPacketReader as recommended by LiteNetLib docs
+                    reader.Recycle();
                 }
                 catch (Exception ex)
                 {
                     Logger.Error($"Error in RelayEventListener.OnNetworkReceive: {ex.Message}");
+                    // Still recycle the reader even on error
+                    try { reader.Recycle(); } catch { }
                 }
+            }
+            
+            private bool IsControlMessage(string message)
+            {
+                // Check for known control message patterns
+                return message.Contains(":") || 
+                       message == "PONG" || 
+                       message.StartsWith("LOBBY_") ||
+                       message.StartsWith("CLIENT_") ||
+                       message.StartsWith("HOST_") ||
+                       message.StartsWith("ERROR") ||
+                       message.StartsWith("JOINED_");
             }
             
             private void HandleControlMessage(string message)
             {
-                Logger.Info($"[RELAY] Received control message: {message}");
                 
                 var parts = message.Split(':');
                 var command = parts[0];
@@ -247,7 +310,6 @@ namespace CasinoRoyale.Classes.Networking
                         {
                             var lobbyCode = parts[1];
                             _manager.CurrentLobbyCode = lobbyCode;
-                            Logger.LogNetwork("RELAY", $"Lobby created: {lobbyCode}");
                             _manager.OnLobbyCodeReceived?.Invoke(lobbyCode);
                         }
                         break;
@@ -257,7 +319,6 @@ namespace CasinoRoyale.Classes.Networking
                         {
                             var lobbyCode = parts[1];
                             _manager.CurrentLobbyCode = lobbyCode;
-                            Logger.LogNetwork("RELAY", $"Joined lobby: {lobbyCode}");
                             // Trigger OnPeerConnected to start the join process
                             _gameListener.OnPeerConnected(_manager._relayServerPeer);
                         }
@@ -267,7 +328,6 @@ namespace CasinoRoyale.Classes.Networking
                         if (parts.Length > 1)
                         {
                             var clientId = parts[1];
-                            Logger.LogNetwork("RELAY", $"Client joined: {clientId}");
                             // For host: a new client connected
                             // We can't create a real NetPeer for them, but we signal the connection
                             _gameListener.OnPeerConnected(_manager._relayServerPeer);
@@ -275,7 +335,6 @@ namespace CasinoRoyale.Classes.Networking
                         break;
                         
                     case "HOST_DISCONNECTED":
-                        Logger.LogNetwork("RELAY", "Host disconnected");
                         _gameListener.OnPeerDisconnected(_manager._relayServerPeer, new DisconnectInfo());
                         break;
                         
@@ -310,4 +369,3 @@ namespace CasinoRoyale.Classes.Networking
             }
         }
     }
-}

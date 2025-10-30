@@ -5,9 +5,9 @@ using System;
 using System.Linq;
 using System.Collections.Generic;
 
-namespace CasinoRoyale.Utils
-{
-    public class Properties
+namespace CasinoRoyale.Utils;
+
+public class Properties
 {
     private Dictionary<string, string> list;
     private string filename;
@@ -35,10 +35,6 @@ namespace CasinoRoyale.Utils
             list[field] = value.ToString();
     }
 
-    public void Save()
-    {
-        Save(this.filename);
-    }
 
     public void Save(string filename)
     {
@@ -56,10 +52,6 @@ namespace CasinoRoyale.Utils
         file.Close();
     }
 
-    public void reload()
-    {
-        reload(this.filename);
-    }
 
     public void reload(string filename)
     {
@@ -100,8 +92,5 @@ namespace CasinoRoyale.Utils
                 catch { }
             }
         }
-    }
-
-
     }
 }

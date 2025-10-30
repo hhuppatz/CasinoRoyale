@@ -1,10 +1,10 @@
 using LiteNetLib;
-using CasinoRoyale.Classes.GameObjects;
+using CasinoRoyale.Classes.GameObjects.Player;
 
-namespace CasinoRoyale.Classes.Networking
-{
-    // Wrapper for PlayableCharacter class with NetPeer information
-    public class NetworkPlayer
+namespace CasinoRoyale.Classes.Networking.Players;
+
+// Wrapper for PlayableCharacter class with NetPeer information
+public class NetworkPlayer
 {
     private NetPeer _peer;
     private PlayableCharacter _player;
@@ -16,5 +16,4 @@ namespace CasinoRoyale.Classes.Networking
         Peer = m_peer;
         Player = m_player;
     }
-}
 }

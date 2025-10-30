@@ -3,13 +3,12 @@ using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using CasinoRoyale.Utils;
+using CasinoRoyale.Classes.GameStates.Interfaces;
 
-namespace CasinoRoyale.Classes.GameStates
-{
-    /// <summary>
-    /// Game state for the main menu
-    /// </summary>
-    public class MenuGameState : GameState
+namespace CasinoRoyale.Classes.GameStates;
+
+// Game state for the main menu
+public class MenuGameState(Game game, IGameStateManager stateManager) : GameState(game, stateManager)
     {
         private KeyboardState _previousKeyboardState;
         private MouseState _previousMouseState;
@@ -20,15 +19,10 @@ namespace CasinoRoyale.Classes.GameStates
         // Button rectangles for click detection
         private Rectangle _hostButtonRect;
         private Rectangle _inputBoxRect;
-        
-        public MenuGameState(Game game, IGameStateManager stateManager) : base(game, stateManager)
-        {
-        }
-        
+
         public override void Initialize()
         {
             base.Initialize();
-            Logger.Info("Menu Game State initializing...");
         }
         
         public override void LoadContent()
@@ -77,7 +71,7 @@ namespace CasinoRoyale.Classes.GameStates
             // Handle Enter key to join game
             if (IsKeyPressed(keyboardState, Keys.Enter) && !string.IsNullOrEmpty(_lobbyCodeInput) && _lobbyCodeInput.Length == 6)
             {
-                Logger.Info($"Starting as Client with lobby code: {_lobbyCodeInput}");
+                Logger.LogNetwork("MENU", $"User pressed Enter with lobby code: {_lobbyCodeInput}");
                 StartClient(_lobbyCodeInput);
                 return; // Don't process other input
             }
@@ -89,13 +83,11 @@ namespace CasinoRoyale.Classes.GameStates
                 
                 if (_hostButtonRect.Contains(mousePos))
                 {
-                    Logger.Info("Host button clicked...");
                     StartHost();
                     return; // Don't process other input
                 }
                 else if (_inputBoxRect.Contains(mousePos))
                 {
-                    Logger.Info("Input box clicked...");
                 }
             }
             
@@ -157,7 +149,6 @@ namespace CasinoRoyale.Classes.GameStates
                 _statusMessage = "Starting Host...";
                 _statusColor = Color.Green;
                 
-                Logger.Info("Starting Host game...");
                 
                 // Use state manager to transition (no casting needed!)
                 var hostState = new HostGameState(Game, StateManager);
@@ -175,10 +166,10 @@ namespace CasinoRoyale.Classes.GameStates
         {
             try
             {
+                Logger.LogNetwork("MENU", $"Starting Client with lobby code: {lobbyCode}");
                 _statusMessage = $"Starting Client with lobby code: {lobbyCode}";
                 _statusColor = Color.Green;
                 
-                Logger.Info($"Starting Client with lobby code: {lobbyCode}");
                 
                 // Use state manager to transition (no casting needed!)
                 var clientState = new ClientGameState(Game, StateManager, lobbyCode);
@@ -280,4 +271,3 @@ namespace CasinoRoyale.Classes.GameStates
             return texture;
         }
     }
-}

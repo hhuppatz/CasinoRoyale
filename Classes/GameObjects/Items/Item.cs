@@ -1,37 +1,42 @@
 using System;
 using System.Collections.Generic;
-using CasinoRoyale.Classes.GameObjects.Platforms;
 using CasinoRoyale.Classes.GameSystems;
 using CasinoRoyale.Classes.Networking;
 using LiteNetLib.Utils;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
+using IDrawable = CasinoRoyale.Classes.GameObjects.Interfaces.IDrawable;
 
 namespace CasinoRoyale.Classes.GameObjects.Items;
 
 public enum ItemType
 {
     COIN,
-    OTHER
+    SWORD
 }
 
-public class Item(uint itemId, ItemType itemType, Texture2D tex, Vector2 coords, Vector2 startVelocity, float mass = 4.0f) : GameEntity(coords, startVelocity, new Rectangle(coords.ToPoint(), new Point(tex.Bounds.Width, tex.Bounds.Height)), true, mass)
+// Abstract base class for all items
+public abstract class Item(uint itemId, ItemType itemType, Texture2D tex, Vector2 coords, Vector2 startVelocity, float mass = 10.0f, float elasticity = 0.5f)
+: GameEntity(coords, startVelocity, new Rectangle(coords.ToPoint(), new Point(tex.Bounds.Width, tex.Bounds.Height)), true, mass),
+IDrawable
 {
+    // Item
     private readonly uint itemId = itemId;
+    public uint ItemId { get => itemId; }
     private readonly ItemType itemType = itemType;
-    private float lifetime = 0;
     public ItemType ItemType => itemType;
-    private readonly Texture2D tex = tex;
-    private readonly float elasticity = 0.5f;
-    // Items handle their own physics deterministically - no change tracking needed
+    private readonly float elasticity = elasticity;
+    private float lifetime = 0;
+    public float Lifetime { get => lifetime; }
+
+    // IDrawable
+    private Texture2D tex = tex;
+    public Texture2D Texture { get => tex; set => tex = value; }
     
-    public uint ItemId => itemId;
-    public Texture2D GetTexture() => tex;
-    
-    public void Update(float dt, Rectangle gameArea, List<Platform> platforms)
+    public virtual void Update(float dt, Rectangle gameArea, IEnumerable<Rectangle> tileRects)
     {
         // Use the new generic physics system
-        var physicsResult = PhysicsSystem.UpdatePhysics(gameArea, platforms, Coords, Velocity, Hitbox, Mass, dt);
+        var physicsResult = PhysicsSystem.UpdatePhysics(gameArea, tileRects, Coords, Velocity, Hitbox, Mass, dt);
         Coords = physicsResult.newPosition;
         Velocity = physicsResult.newVelocity;
         
@@ -45,21 +50,13 @@ public class Item(uint itemId, ItemType itemType, Texture2D tex, Vector2 coords,
             }
         }
 
-        switch (itemType)
-        {
-            case ItemType.COIN:
-                if (lifetime > 10)
-                {
-                    DestroyEntity();
-                }
-            break;
-            case ItemType.OTHER:
-
-            break;
-        }
-
         lifetime += dt;
     }
+
+    // Destroy item is same process as destroying any entity
+    public void Destroy() => DestroyEntity();
+
+    public abstract void Collect();
     
     public ItemState GetState()
     {
@@ -87,27 +84,10 @@ public class Item(uint itemId, ItemType itemType, Texture2D tex, Vector2 coords,
     }
 }
 
-public struct ItemState : INetSerializable
+public struct ItemState
 {
     public ObjectType objectType;
     public ItemType itemType;
     public GameEntityState gameEntityState;
     public uint itemId;
-    
-    public void Serialize(NetDataWriter writer)
-    {
-        writer.Put((byte)objectType);
-        writer.Put((byte)itemType);
-        writer.Put(itemId);
-        gameEntityState.Serialize(writer);
-    }
-    
-    public void Deserialize(NetDataReader reader)
-    {
-        objectType = (ObjectType)reader.GetByte();
-        itemType = (ItemType)reader.GetByte();
-        itemId = reader.GetUInt();
-        gameEntityState = new GameEntityState();
-        gameEntityState.Deserialize(reader);
-    }
 }

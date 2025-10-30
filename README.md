@@ -11,8 +11,8 @@ The game uses a relay server to enable multiplayer connections between players b
 Relay server connection details are stored in **`app.properties`**:
 
 ```properties
-relay.server.address=54.252.174.8
-relay.server.port=9051
+relay.server.address=IP_ADDRESS
+relay.server.port=PORT
 ```
 
 ### How It Works
@@ -45,6 +45,7 @@ The `app.properties` file is automatically copied to build outputs during compil
 ```
 
 This starts two game instances:
+
 1. In **Instance 1**: Click **"HOST GAME"**
 2. Note the **lobby code** in top-left corner
 3. In **Instance 2**: Type the **lobby code** and press Enter
@@ -73,6 +74,7 @@ Both instances will connect to the relay server configured in `app.properties`.
 ## 📖 Documentation
 
 For detailed guides, see the `docs/` folder:
+
 - Building and deployment
 - AWS relay server setup
 - Project structure
