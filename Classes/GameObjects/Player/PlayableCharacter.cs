@@ -274,6 +274,7 @@ public class PlayableCharacter : GameEntity,
     
     /// <summary>
     /// Try to pick up nearby items that require manual pickup (E key)
+    /// Network-compatible: Clients send requests, Host processes directly
     /// </summary>
     private void TryPickupNearbyItems(GameWorld gameWorld)
     {
@@ -285,8 +286,17 @@ public class PlayableCharacter : GameEntity,
             {
                 if (!inventory.IsFull())
                 {
-                    pickupable.OnPickup(this);
-                    // Item will be marked for destruction by OnPickup
+                    // Check if we're in networked mode
+                    if (NetworkManager.Instance.IsHost)
+                    {
+                        // Host: Process pickup immediately and will broadcast to clients
+                        ProcessItemPickup(item, gameWorld);
+                    }
+                    else
+                    {
+                        // Client: Send pickup request to host
+                        SendPickupRequest(item.ItemId);
+                    }
                 }
                 else
                 {
@@ -298,7 +308,47 @@ public class PlayableCharacter : GameEntity,
     }
     
     /// <summary>
+    /// Send pickup request to host (client-side)
+    /// </summary>
+    private void SendPickupRequest(uint itemId)
+    {
+        InventoryNetworkHandler.Instance?.SendPickupRequest(pid, itemId);
+    }
+    
+    /// <summary>
+    /// Process item pickup (host authoritative)
+    /// </summary>
+    public bool ProcessItemPickup(Item item, GameWorld gameWorld)
+    {
+        if (item is IPickupable pickupable)
+        {
+            if (inventory.TryAddItem(item.ItemType))
+            {
+                Logger.Info($"Player {username} picked up {item.ItemType}!");
+                pickupable.OnPickup(this);
+                
+                // Host broadcasts pickup to all clients
+                if (NetworkManager.Instance.IsHost)
+                {
+                    InventoryNetworkHandler.Instance?.BroadcastPickup(pid, item.ItemId, item.ItemType, true);
+                }
+                
+                return true;
+            }
+        }
+        
+        // Broadcast failure if inventory was full
+        if (NetworkManager.Instance.IsHost)
+        {
+            InventoryNetworkHandler.Instance?.BroadcastPickup(pid, item.ItemId, item.ItemType, false);
+        }
+        
+        return false;
+    }
+    
+    /// <summary>
     /// Auto-collect items that don't require manual pickup (like coins)
+    /// Network-compatible: Clients send requests, Host processes directly
     /// </summary>
     private void TryAutoCollectItems(GameWorld gameWorld)
     {
@@ -310,8 +360,17 @@ public class PlayableCharacter : GameEntity,
             {
                 if (!inventory.IsFull())
                 {
-                    pickupable.OnPickup(this);
-                    // Item will be marked for destruction by OnPickup
+                    // Check if we're in networked mode
+                    if (NetworkManager.Instance.IsHost)
+                    {
+                        // Host: Process pickup immediately and will broadcast to clients
+                        ProcessItemPickup(item, gameWorld);
+                    }
+                    else
+                    {
+                        // Client: Send pickup request to host
+                        SendPickupRequest(item.ItemId);
+                    }
                 }
             }
         }
@@ -319,6 +378,7 @@ public class PlayableCharacter : GameEntity,
     
     /// <summary>
     /// Drop the first non-empty item from inventory
+    /// Network-compatible: Clients send requests, Host processes directly
     /// </summary>
     private void TryDropItem(GameWorld gameWorld)
     {
@@ -335,23 +395,59 @@ public class PlayableCharacter : GameEntity,
         
         if (itemType.HasValue)
         {
-            // Remove one item from inventory
-            if (inventory.TryRemoveItem(itemType.Value))
+            // Calculate drop position and velocity
+            Vector2 dropPosition = Coords + new Vector2(Hitbox.Width / 2, 0);
+            Vector2 dropVelocity = new Vector2(Velocity.X * 0.5f, -100f); // Toss forward and up
+            
+            // Check if we're in networked mode
+            if (NetworkManager.Instance.IsHost)
             {
-                // Calculate drop position and velocity
-                Vector2 dropPosition = Coords + new Vector2(Hitbox.Width / 2, 0);
-                Vector2 dropVelocity = new Vector2(Velocity.X * 0.5f, -100f); // Toss forward and up
-                
-                // Spawn the item in the world
-                gameWorld.SpawnItem(itemType.Value, dropPosition, dropVelocity);
-                
-                Logger.Info($"Player {username} dropped a {itemType.Value}!");
+                // Host: Process drop immediately and will broadcast to clients
+                ProcessItemDrop(itemType.Value, dropPosition, dropVelocity, gameWorld);
+            }
+            else
+            {
+                // Client: Send drop request to host
+                SendDropRequest(itemType.Value, dropPosition, dropVelocity);
             }
         }
     }
     
     /// <summary>
+    /// Send drop request to host (client-side)
+    /// </summary>
+    private void SendDropRequest(ItemType itemType, Vector2 dropPosition, Vector2 dropVelocity)
+    {
+        InventoryNetworkHandler.Instance?.SendDropRequest(pid, itemType, dropPosition, dropVelocity);
+    }
+    
+    /// <summary>
+    /// Process item drop (host authoritative)
+    /// </summary>
+    public bool ProcessItemDrop(ItemType itemType, Vector2 dropPosition, Vector2 dropVelocity, GameWorld gameWorld)
+    {
+        // Remove one item from inventory
+        if (inventory.TryRemoveItem(itemType))
+        {
+            // Spawn the item in the world
+            gameWorld.SpawnItem(itemType, dropPosition, dropVelocity);
+            Logger.Info($"Player {username} dropped a {itemType}!");
+            
+            // Host broadcasts drop to all clients
+            if (NetworkManager.Instance.IsHost && gameWorld.AllItems.Count > 0)
+            {
+                var newItem = gameWorld.AllItems[gameWorld.AllItems.Count - 1]; // Last spawned item
+                InventoryNetworkHandler.Instance?.BroadcastDrop(pid, itemType, newItem);
+            }
+            
+            return true;
+        }
+        return false;
+    }
+    
+    /// <summary>
     /// Use the first item in inventory (I key)
+    /// Network-compatible: Clients send requests, Host processes directly
     /// </summary>
     private void TryUseItem()
     {
@@ -368,9 +464,44 @@ public class PlayableCharacter : GameEntity,
         
         if (itemType.HasValue)
         {
+            // Check if we're in networked mode
+            if (NetworkManager.Instance.IsHost)
+            {
+                // Host: Process use immediately and will broadcast to clients
+                ProcessItemUse(itemType.Value);
+            }
+            else
+            {
+                // Client: Send use request to host
+                SendUseRequest(itemType.Value);
+            }
+        }
+    }
+    
+    /// <summary>
+    /// Send use request to host (client-side)
+    /// </summary>
+    private void SendUseRequest(ItemType itemType)
+    {
+        InventoryNetworkHandler.Instance?.SendUseRequest(pid, itemType);
+    }
+    
+    /// <summary>
+    /// Process item use (host authoritative)
+    /// </summary>
+    public void ProcessItemUse(ItemType itemType)
+    {
+        if (inventory.HasItem(itemType))
+        {
             // Get the use strategy for this item type
-            var strategy = Items.Strategies.ItemStrategyFactory.GetStrategy(itemType.Value);
-            strategy.Execute(this, itemType.Value);
+            var strategy = Items.Strategies.ItemStrategyFactory.GetStrategy(itemType);
+            strategy.Execute(this, itemType);
+            
+            // Host broadcasts use to all clients
+            if (NetworkManager.Instance.IsHost)
+            {
+                InventoryNetworkHandler.Instance?.BroadcastUse(pid, itemType);
+            }
         }
     }
     

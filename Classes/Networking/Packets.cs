@@ -368,4 +368,138 @@ public struct GridTileState
     public bool isSolid { get; set; }
 }
 
+// ==================== INVENTORY PACKETS ====================
+
+// Client -> Host: Request to pick up an item
+public class ItemPickupRequestPacket : INetSerializable
+{
+    public uint playerId { get; set; }
+    public uint itemId { get; set; }
+    
+    public void Serialize(NetDataWriter writer)
+    {
+        writer.Put(playerId);
+        writer.Put(itemId);
+    }
+    
+    public void Deserialize(NetDataReader reader)
+    {
+        playerId = reader.GetUInt();
+        itemId = reader.GetUInt();
+    }
+}
+
+// Host -> All: Broadcast that a player picked up an item
+public class ItemPickupBroadcastPacket : INetSerializable
+{
+    public uint playerId { get; set; }
+    public uint itemId { get; set; }
+    public byte itemType { get; set; }  // ItemType enum as byte
+    public bool success { get; set; }  // Whether pickup was successful
+    
+    public void Serialize(NetDataWriter writer)
+    {
+        writer.Put(playerId);
+        writer.Put(itemId);
+        writer.Put(itemType);
+        writer.Put(success);
+    }
+    
+    public void Deserialize(NetDataReader reader)
+    {
+        playerId = reader.GetUInt();
+        itemId = reader.GetUInt();
+        itemType = reader.GetByte();
+        success = reader.GetBool();
+    }
+}
+
+// Client -> Host: Request to drop an item
+public class ItemDropRequestPacket : INetSerializable
+{
+    public uint playerId { get; set; }
+    public byte itemType { get; set; }  // ItemType enum as byte
+    public Vector2 dropPosition { get; set; }
+    public Vector2 dropVelocity { get; set; }
+    
+    public void Serialize(NetDataWriter writer)
+    {
+        writer.Put(playerId);
+        writer.Put(itemType);
+        AsyncPacketProcessor.SerializeVector2(writer, dropPosition);
+        AsyncPacketProcessor.SerializeVector2(writer, dropVelocity);
+    }
+    
+    public void Deserialize(NetDataReader reader)
+    {
+        playerId = reader.GetUInt();
+        itemType = reader.GetByte();
+        dropPosition = AsyncPacketProcessor.DeserializeVector2(reader);
+        dropVelocity = AsyncPacketProcessor.DeserializeVector2(reader);
+    }
+}
+
+// Host -> All: Broadcast that a player dropped an item (and a new item was spawned)
+public class ItemDropBroadcastPacket : INetSerializable
+{
+    public uint playerId { get; set; }
+    public byte itemType { get; set; }  // ItemType enum as byte
+    public uint newItemId { get; set; }  // ID of the newly spawned item in world
+    public ItemState newItemState { get; set; }  // Full state of the new item
+    
+    public void Serialize(NetDataWriter writer)
+    {
+        writer.Put(playerId);
+        writer.Put(itemType);
+        writer.Put(newItemId);
+        AsyncPacketProcessor.SerializeItemState(writer, newItemState);
+    }
+    
+    public void Deserialize(NetDataReader reader)
+    {
+        playerId = reader.GetUInt();
+        itemType = reader.GetByte();
+        newItemId = reader.GetUInt();
+        newItemState = AsyncPacketProcessor.DeserializeItemState(reader);
+    }
+}
+
+// Client -> Host: Request to use an item
+public class ItemUseRequestPacket : INetSerializable
+{
+    public uint playerId { get; set; }
+    public byte itemType { get; set; }  // ItemType enum as byte
+    
+    public void Serialize(NetDataWriter writer)
+    {
+        writer.Put(playerId);
+        writer.Put(itemType);
+    }
+    
+    public void Deserialize(NetDataReader reader)
+    {
+        playerId = reader.GetUInt();
+        itemType = reader.GetByte();
+    }
+}
+
+// Host -> All: Broadcast that a player used an item
+public class ItemUseBroadcastPacket : INetSerializable
+{
+    public uint playerId { get; set; }
+    public byte itemType { get; set; }  // ItemType enum as byte
+    
+    public void Serialize(NetDataWriter writer)
+    {
+        writer.Put(playerId);
+        writer.Put(itemType);
+    }
+    
+    public void Deserialize(NetDataReader reader)
+    {
+        playerId = reader.GetUInt();
+        itemType = reader.GetByte();
+    }
+}
+
 // Dedicated packet for platform initialization - removed; grid is authoritative
