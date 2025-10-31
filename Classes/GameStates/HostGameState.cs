@@ -5,6 +5,7 @@ using System.Net;
 using System.Net.Sockets;
 using System.Threading.Tasks;
 using CasinoRoyale.Classes.GameObjects;
+using CasinoRoyale.Classes.GameObjects.Items;
 using CasinoRoyale.Classes.GameObjects.Player;
 using CasinoRoyale.Classes.GameStates.Interfaces;
 using CasinoRoyale.Classes.GameSystems;
@@ -30,6 +31,8 @@ public class HostGameState : GameState
     private float _serverUpdateTimer = 0f;
     private float _platformUpdateTimer = 0f; // Separate timer for platform updates
     private float _gameTime = 0f;
+    private float _hostUpdateAccumulator = 0f;
+    private float _hostUpdateInterval = 0.05f; // 20 Hz updates for host broadcast
     private readonly uint _maxPlayers = 6;
     private readonly PlayerIDs _playerIDs;
     private int _nextSpawnOffset = 0;
@@ -212,6 +215,14 @@ public class HostGameState : GameState
             }
         };
 
+        NetworkManager.Instance.ClientSendToHost += (packet) =>
+        {
+            if (_relayManager?.RelayServerPeer?.ConnectionState == ConnectionState.Connected)
+            {
+                SendPacketToRelay(packet);
+            }
+        };
+
         NetworkManager.Instance.HostBroadcastObjectChangeRequested += (
             objectId,
             propertyName,
@@ -254,6 +265,11 @@ public class HostGameState : GameState
     {
         try
         {
+            // Avoid double-sending movement: we already broadcast player transforms explicitly
+            if (string.Equals(propertyName, "state", StringComparison.OrdinalIgnoreCase))
+            {
+                return;
+            }
             var updatePacket = new NetworkObjectUpdatePacket
             {
                 objectId = objectId,
@@ -360,18 +376,106 @@ public class HostGameState : GameState
                 }
                 uint newId = _playerIDs.GetNextID();
 
+                // Build initial player state for the joining client
+                var spawnPos = CalculateSpawnPosition();
+                var joiningState = new PlayerState
+                {
+                    pid = newId,
+                    username = join.username,
+                    initialJumpVelocity = join.playerInitialJumpVelocity,
+                    maxRunSpeed = join.playerStandardSpeed,
+                    ges = new GameEntityState
+                    {
+                        coords = spawnPos,
+                        velocity = Vector2.Zero,
+                        mass = join.playerMass,
+                        awake = true,
+                    }
+                };
+
+                // Build hitbox based on host's player texture size
+                var hitbox = PlayerTexture != null
+                    ? new Rectangle(
+                        spawnPos.ToPoint(),
+                        new Point(PlayerTexture.Bounds.Width, PlayerTexture.Bounds.Height)
+                      )
+                    : new Rectangle(spawnPos.ToPoint(), new Point(32, 32));
+
+                var otherPlayers = BuildPlayerStatesSnapshot();
+                var items = GameWorld != null ? GameWorld.GetItemStates() : Array.Empty<ItemState>();
+                var tiles = GameWorld != null ? GameWorld.GetGridTileStates() : Array.Empty<GridTileState>();
+
                 var accept = new JoinAcceptPacket
                 {
                     targetClientId = newId,
                     clientNonce = join.clientNonce,
                     gameArea = GameWorld != null ? GameWorld.GameArea : Rectangle.Empty,
+                    playerHitbox = hitbox,
+                    playerState = joiningState,
+                    playerVelocity = joiningState.ges.velocity,
+                    otherPlayerStates = otherPlayers ?? Array.Empty<PlayerState>(),
+                    itemStates = items,
+                    gridTiles = tiles,
                 };
                 SendPacketToRelay(accept);
                 Logger.LogNetwork("HOST", $"JoinAccept sent for nonce {join.clientNonce} with id {newId}");
+
+                // Create a server-side representation of the new player so the host can render/update them
+                if (PlayerTexture != null)
+                {
+                    var newPlayable = new PlayableCharacter(
+                        newId,
+                        join.username,
+                        PlayerTexture,
+                        spawnPos,
+                        Vector2.Zero,
+                        join.playerMass,
+                        join.playerInitialJumpVelocity,
+                        join.playerStandardSpeed,
+                        hitbox,
+                        true
+                    );
+                    newPlayable.InitializeTargets();
+                    if (!_players.ContainsKey(newId))
+                    {
+                        _players.Add(newId, newPlayable);
+                    }
+                    else
+                    {
+                        _players[newId] = newPlayable;
+                    }
+                }
             }
             catch (Exception ex)
             {
                 Logger.Error($"HOST: error handling join request: {ex.Message}");
+            }
+        };
+
+        // When clients send their movement/state, update server model and forward to others
+        _packetProcessor.PlayerUpdateReceived += (sender, args) =>
+        {
+            try
+            {
+                var pkt = args.Packet;
+                // Update server-side record for this player if tracked
+                if (_players != null && _players.TryGetValue(pkt.playerId, out var player))
+                {
+                    player.AddBufferedState(pkt.coords, pkt.velocity, _gameTime);
+                }
+
+                // Broadcast as a generic object update (id, coords, velocity)
+                var update = new NetworkObjectUpdatePacket
+                {
+                    objectId = pkt.playerId,
+                    coords = pkt.coords,
+                    velocity = pkt.velocity,
+                };
+                SendPacketToRelay(update);
+            }
+            catch (Exception ex)
+            {
+                Logger.Error($"HOST: error handling PlayerSendUpdatePacket: {ex.Message}");
             }
         };
     }
@@ -518,7 +622,22 @@ public class HostGameState : GameState
         _platformUpdateTimer += deltaTime;
         this._gameTime += deltaTime;
 
-        if (LocalPlayer != null)
+        // Periodically broadcast host player's state to clients (fixed cadence)
+        _hostUpdateAccumulator += deltaTime;
+        if (LocalPlayer != null && _hostUpdateAccumulator >= _hostUpdateInterval)
+        {
+            _hostUpdateAccumulator = 0f;
+            var ps = LocalPlayer.GetPlayerState();
+            var update = new NetworkObjectUpdatePacket
+            {
+                objectId = ps.pid,
+                coords = ps.ges.coords,
+                velocity = ps.ges.velocity,
+            };
+            SendPacketToRelay(update);
+        }
+
+        if (LocalPlayer != null && GameWorld != null && GameWorld.GameArea != Rectangle.Empty && PhysicsSystem.IsInitialized)
         {
             LocalPlayer.TryMovePlayer(KeyboardState, PreviousKeyboardState, deltaTime, GameWorld);
             MainCamera.MoveToFollowPlayer(LocalPlayer);
@@ -528,6 +647,20 @@ public class HostGameState : GameState
             return;
 
         GameWorld.Update(deltaTime, NetworkManager.Instance.IsHost);
+
+        // Update remote players' interpolation on the host
+        if (_players != null && LocalPlayer != null)
+        {
+            foreach (var kv in _players)
+            {
+                var pid = kv.Key;
+                var player = kv.Value;
+                if (player == null || pid == LocalPlayer.GetID())
+                    continue;
+                player.ProcessBufferedStates(deltaTime);
+                player.UpdateInterpolation(deltaTime);
+            }
+        }
     }
 
     public override void Draw(GameTime gameTime)
@@ -545,6 +678,19 @@ public class HostGameState : GameState
         GameWorld.DrawGameObjects();
 
         SpriteBatch.DrawEntity(MainCamera, LocalPlayer);
+
+        // Draw other players on the host
+        if (_players != null && LocalPlayer != null)
+        {
+            foreach (var kv in _players)
+            {
+                var pid = kv.Key;
+                var player = kv.Value;
+                if (player == null || pid == LocalPlayer.GetID())
+                    continue;
+                SpriteBatch.DrawEntity(MainCamera, player);
+            }
+        }
 
         if (!string.IsNullOrEmpty(_currentLobbyCode) && Font != null)
         {

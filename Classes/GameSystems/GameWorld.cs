@@ -227,25 +227,7 @@ partial class GameWorld
 
     public void OnPacket(JoinAcceptPacket packet)
     {
-        // Full join accept also contains area, items, grid
-        if (packet.gameArea != Rectangle.Empty)
-        {
-            GameArea = packet.gameArea;
-        }
-        if (packet.itemStates != null)
-        {
-            itemManager.ProcessItemStates(packet.itemStates);
-        }
-        if (packet.gridTiles != null)
-        {
-            foreach (var t in packet.gridTiles)
-            {
-                var texture = ResolveTextureForTileType(t.type);
-                if (texture != null)
-                {
-                    gridManager.PlaceTile(t.type, t.hitbox, texture, t.source, t.isSolid);
-                }
-            }
-        }
+        // Initialize the world from the join accept packet (this also initializes PhysicsSystem)
+        InitializeGameWorldFromState(packet);
     }
 }

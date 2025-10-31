@@ -31,6 +31,8 @@ public class PhysicsSystem
     public readonly float GRAVITY = 9.8f;
     private static PhysicsSystem _instance;
 
+    public static bool IsInitialized => _instance != null;
+
     public static PhysicsSystem Instance
     {
         get

@@ -219,36 +219,35 @@ public class PlayableCharacter
 
         stateBuffer.Enqueue(bufferedState);
 
+        // Keep buffer small to reduce latency
         while (stateBuffer.Count > 5)
         {
             stateBuffer.Dequeue();
         }
+
+        // Update targets immediately to the latest state for smooth catch-up
+        SetTargetPosition(newCoords, newVelocity);
     }
 
     public void ProcessBufferedStates(float dt)
     {
         currentTime += dt;
 
-        BufferedState? mostRecentState = null;
-
+        // Consume all queued states, using the most recent one as the target
+        BufferedState latest;
+        bool hasLatest = false;
         while (stateBuffer.Count > 0)
         {
-            var oldestState = stateBuffer.Peek();
-
-            if (currentTime - oldestState.timestamp > 0.2f)
-            {
-                stateBuffer.Dequeue();
-            }
-            else
-            {
-                mostRecentState = oldestState;
-                break;
-            }
+            latest = stateBuffer.Dequeue();
+            hasLatest = true;
         }
 
-        if (mostRecentState.HasValue)
+        if (hasLatest)
         {
-            SetTargetPosition(mostRecentState.Value.coords, mostRecentState.Value.velocity);
+            // Targets were already updated in AddBufferedState, but ensure latest is applied
+            // This helps if multiple states arrived between frames
+            // Note: we don't rely on timestamps here to avoid jitter
+            // The interpolation step will smooth towards this target
         }
     }
 
@@ -261,11 +260,20 @@ public class PlayableCharacter
 
     public void UpdateInterpolation(float dt)
     {
-        if (targetCoords != Vector2.Zero || Vector2.Distance(Coords, targetCoords) > 0.1f)
-        {
-            Coords = Vector2.Lerp(Coords, targetCoords, interpolationSpeed * dt);
+        // Smoothly approach the target; clamp alpha to avoid overshoot on low FPS
+        float alpha = MathHelper.Clamp(interpolationSpeed * dt, 0f, 1f);
 
-            Velocity = Vector2.Lerp(Velocity, targetVelocity, interpolationSpeed * dt);
+        Coords = Vector2.Lerp(Coords, targetCoords, alpha);
+        Velocity = Vector2.Lerp(Velocity, targetVelocity, alpha);
+
+        // Snap when very close to eliminate micro jitter
+        if (Vector2.DistanceSquared(Coords, targetCoords) < 0.25f)
+        {
+            Coords = targetCoords;
+        }
+        if (Vector2.DistanceSquared(Velocity, targetVelocity) < 0.25f)
+        {
+            Velocity = targetVelocity;
         }
     }
 

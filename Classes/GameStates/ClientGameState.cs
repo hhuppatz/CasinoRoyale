@@ -40,6 +40,8 @@ public partial class ClientGameState(Game game, IGameStateManager stateManager, 
     private bool _disposed = false;
     private bool _worldReady = false;
     private bool _localPlayerInitialized = false;
+    private float _clientUpdateAccumulator = 0f;
+    private float _clientUpdateInterval = 0.05f; // 20 Hz
 
     private readonly PlayerIDs _playerIDs = new(6);
 
@@ -77,6 +79,11 @@ public partial class ClientGameState(Game game, IGameStateManager stateManager, 
                     _eventBus.Subscribe<GameWorldInitPacket>(GameWorld);
                     _eventBus.Subscribe<JoinAcceptPacket>(GameWorld);
                 }
+                // After GameWorld is subscribed, subscribe client observers to ensure world applies first
+                _eventBus.Subscribe<GameWorldInitPacket>(this);
+                _eventBus.Subscribe<JoinAcceptPacket>(this);
+                _eventBus.Subscribe<PlayerReceiveUpdatePacket>(this);
+                _eventBus.Subscribe<NetworkObjectUpdatePacket>(this);
             },
             onDisconnected: (reason) =>
             {
@@ -121,12 +128,7 @@ public partial class ClientGameState(Game game, IGameStateManager stateManager, 
                 }
             });
 
-        // Subscribe world to item-related packets once created after connect
-        // Also subscribe client state to init/accept/player updates
-        _eventBus.Subscribe<GameWorldInitPacket>(this);
-        _eventBus.Subscribe<JoinAcceptPacket>(this);
-        _eventBus.Subscribe<PlayerReceiveUpdatePacket>(this);
-        _eventBus.Subscribe<NetworkObjectUpdatePacket>(this);
+        // Client observers are subscribed after GameWorld on connect to preserve processing order
     }
 
     public override void LoadContent()
@@ -175,8 +177,20 @@ public partial class ClientGameState(Game game, IGameStateManager stateManager, 
         if (!_connected || !_contentLoaded || LocalPlayer == null)
             return;
 
+        // Ensure GameWorld is initialized (which initializes PhysicsSystem) before moving
+        if (GameWorld == null || GameWorld.GameArea == Rectangle.Empty || !PhysicsSystem.IsInitialized)
+            return;
+
         LocalPlayer.TryMovePlayer(KeyboardState, PreviousKeyboardState, deltaTime, GameWorld);
         MainCamera.MoveToFollowPlayer(LocalPlayer);
+
+        // Send our movement/state to host at fixed cadence
+        _clientUpdateAccumulator += deltaTime;
+        if (_clientUpdateAccumulator >= _clientUpdateInterval)
+        {
+            _clientUpdateAccumulator = 0f;
+            TrySendLocalPlayerUpdate();
+        }
 
         if (GameWorld == null)
             return;
@@ -419,6 +433,15 @@ partial class ClientGameState
             }
         }
         _worldReady = true;
+
+        // If we already have an assigned id and content loaded, spawn immediately
+        if (_contentLoaded && !_localPlayerInitialized && GameWorld != null && GameWorld.GameArea != Rectangle.Empty && _clientId != 0)
+        {
+            InitializeLocalPlayerAfterContent();
+            InitializeCamera();
+            _localPlayerInitialized = true;
+            Logger.LogNetwork("CLIENT", $"Spawned local player (from GameWorldInit) with id {_clientId}");
+        }
     }
 
     public void OnPacket(JoinAcceptPacket packet)
@@ -431,6 +454,69 @@ partial class ClientGameState
             );
             _clientId = packet.targetClientId;
             _worldReady = true;
+
+            // Ensure remote players are spawned from otherPlayerStates
+            if (packet.otherPlayerStates != null && PlayerTexture != null)
+            {
+                foreach (var ps in packet.otherPlayerStates)
+                {
+                    if (ps.pid == _clientId)
+                        continue;
+                    var existing = _otherPlayers.FirstOrDefault(p => p.GetID() == ps.pid);
+                    if (existing == null)
+                    {
+                        var pos = ps.ges.coords;
+                        var newPlayer = new PlayableCharacter(
+                            ps.pid,
+                            ps.username ?? $"P{ps.pid}",
+                            PlayerTexture,
+                            pos,
+                            ps.ges.velocity,
+                            ps.ges.mass,
+                            ps.initialJumpVelocity,
+                            ps.maxRunSpeed,
+                            new Rectangle(pos.ToPoint(), new Point(PlayerTexture.Bounds.Width, PlayerTexture.Bounds.Height)),
+                            ps.ges.awake
+                        );
+                        newPlayer.InitializeTargets();
+                        _otherPlayers.Add(newPlayer);
+                    }
+                }
+            }
+
+            // Spawn local player immediately if content is loaded and world area will be set by GameWorld observer
+            if (_contentLoaded && !_localPlayerInitialized && GameWorld != null)
+            {
+                // If GameArea still empty here, GameWorld will set it from its JoinAccept handler
+                // Create local player from packet.playerState and packet.playerHitbox
+                var ps = packet.playerState;
+                if (PlayerTexture != null)
+                {
+                    var pos = ps.ges.coords;
+                    var hitbox = packet.playerHitbox;
+                    if (hitbox == Rectangle.Empty)
+                    {
+                        hitbox = new Rectangle(pos.ToPoint(), new Point(PlayerTexture.Bounds.Width, PlayerTexture.Bounds.Height));
+                    }
+
+                    LocalPlayer = new PlayableCharacter(
+                        _clientId,
+                        ps.username ?? "CLIENT",
+                        PlayerTexture,
+                        pos,
+                        ps.ges.velocity,
+                        ps.ges.mass,
+                        ps.initialJumpVelocity,
+                        ps.maxRunSpeed,
+                        hitbox,
+                        ps.ges.awake
+                    );
+                    LocalPlayer.InitializeTargets();
+                    InitializeCamera();
+                    _localPlayerInitialized = true;
+                    Logger.LogNetwork("CLIENT", $"Spawned local player (from JoinAccept) with id {_clientId}");
+                }
+            }
         }
     }
 
@@ -533,6 +619,25 @@ public partial class ClientGameState
 
         var writer = new NetDataWriter();
         _packetProcessor.PacketProcessor.Write(writer, jp);
+        _relayManager.RelayServerPeer.Send(writer, DeliveryMethod.ReliableOrdered);
+    }
+
+    private void TrySendLocalPlayerUpdate()
+    {
+        if (_relayManager?.RelayServerPeer == null || _packetProcessor == null || LocalPlayer == null || _clientId == 0)
+            return;
+
+        var ps = LocalPlayer.GetPlayerState();
+        var pkt = new PlayerSendUpdatePacket
+        {
+            playerId = _clientId,
+            coords = ps.ges.coords,
+            velocity = ps.ges.velocity,
+            dt = _clientUpdateInterval,
+        };
+
+        var writer = new NetDataWriter();
+        _packetProcessor.PacketProcessor.Write(writer, pkt);
         _relayManager.RelayServerPeer.Send(writer, DeliveryMethod.ReliableOrdered);
     }
 }

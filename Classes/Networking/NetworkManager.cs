@@ -46,6 +46,7 @@ public class NetworkManager
 
     public event Action<INetSerializable, uint> HostSendToClient;
     public event Action<INetSerializable> HostBroadcastPacket;
+    public event Action<INetSerializable> ClientSendToHost;
 
     public void HostSendJoinAcceptance(
         uint targetClientId,
@@ -125,7 +126,7 @@ public class NetworkManager
     {
         if (IsHost)
             return; // Host doesn't send to itself
-        HostBroadcastPacket?.Invoke(packet);
+        ClientSendToHost?.Invoke(packet);
     }
 
     public void BroadcastPacketToAll(INetSerializable packet)
