@@ -11,8 +11,10 @@
     <File>c:/Users/harry/Personal Projects/CasinoRoyaleServer/Content/Coin.png</File>
     <File>c:/Users/harry/Personal Projects/CasinoRoyaleServer/Content/FirstHumanAttempt.png</File>
     <File>c:/Users/harry/Personal Projects/CasinoRoyaleServer/Content/Sword.png</File>
+    <File>c:/Users/harry/Personal Projects/CasinoRoyaleServer/Content/Ground.png</File>
   </SourceFiles>
   <DestFiles>
+    <File xsi:nil="true" />
     <File xsi:nil="true" />
     <File xsi:nil="true" />
     <File xsi:nil="true" />

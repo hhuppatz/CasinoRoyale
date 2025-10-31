@@ -37,7 +37,10 @@ public class Artist(
             var dest = camera.TransformToView(tile.Hitbox.Location.ToVector2());
             var destRect = new Rectangle(
                 dest.ToPoint(),
-                new Point(tile.Hitbox.Width, tile.Hitbox.Height)
+                new Point(
+                    (int)(tile.Hitbox.Width * ratio.X),
+                    (int)(tile.Hitbox.Height * ratio.Y)
+                )
             );
             spriteBatch.Draw(tile.Texture, destRect, tile.Source, Color.White);
         }

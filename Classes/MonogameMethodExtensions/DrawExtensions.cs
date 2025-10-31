@@ -15,6 +15,9 @@ public static class DrawExtensions
     )
         where T : IObject, IDrawable
     {
+        if (drawable?.Texture == null)
+            return;
+            
         _spriteBatch.Draw(
             drawable.Texture,
             _mainCamera.TransformToView(drawable.Coords),

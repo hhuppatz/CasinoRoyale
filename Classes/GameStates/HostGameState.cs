@@ -44,7 +44,7 @@ public class HostGameState : GameState
     private AsyncPacketProcessor _packetProcessor;
     private Dictionary<uint, PlayableCharacter> _players;
     private RelayGameEventListener _gameEventListener;
-    private AsyncPacketProcessor.INetworkEventBus _eventBus;
+    private AsyncPacketProcessor.NetworkEventBus _eventBus;
 
     public HostGameState(Game game, IGameStateManager stateManager)
         : base(game, stateManager)
@@ -58,7 +58,7 @@ public class HostGameState : GameState
 
         NetworkManager.Instance.Initialize(true);
 
-        _players = new Dictionary<uint, PlayableCharacter>();
+        _players = [];
     }
 
     private void InitializeNetworking()
@@ -103,17 +103,14 @@ public class HostGameState : GameState
             // Forward raw game packets from relay to our async packet processor
             _relayManager.OnGamePacketReceived += (bytes) =>
             {
-                try
-                {
+                try {
                     _packetProcessor?.EnqueuePacket(
                         _relayManager.RelayServerPeer,
                         bytes,
                         0,
                         DeliveryMethod.ReliableOrdered
-                    );
-                }
-                catch (Exception ex)
-                {
+                );}
+                catch (Exception ex) {
                     Logger.Error($"Error enqueueing relay packet: {ex.Message}");
                 }
             };
@@ -121,7 +118,6 @@ public class HostGameState : GameState
             _relayManager.OnLobbyCodeReceived += (code) => SetLobbyCode(code);
 
             WireNetworkManagerEvents();
-
             WirePacketProcessorEvents();
 
             // Subscribe world to item-related packets
@@ -165,6 +161,7 @@ public class HostGameState : GameState
             itemStates = GameWorld.GetItemStates(),
             gridTiles = GameWorld.GetGridTileStates()
         };
+        Logger.LogNetwork("HOST", $"Broadcasting GameWorldInitPacket with {packet.gridTiles?.Length ?? 0} tiles, {packet.itemStates?.Length ?? 0} items");
         SendPacketToRelay(packet);
         Logger.LogNetwork("HOST", "Broadcasted GameWorldInitPacket to lobby");
     }
@@ -173,7 +170,7 @@ public class HostGameState : GameState
     {
         try
         {
-            var list = new List<PlayerState>();
+            List<PlayerState> list = [];
             if (LocalPlayer != null)
             {
                 list.Add(LocalPlayer.GetPlayerState());
@@ -189,11 +186,11 @@ public class HostGameState : GameState
                     }
                 }
             }
-            return list.ToArray();
+            return [.. list];
         }
         catch
         {
-            return Array.Empty<PlayerState>();
+            return [];
         }
     }
 
@@ -402,18 +399,19 @@ public class HostGameState : GameState
                     : new Rectangle(spawnPos.ToPoint(), new Point(32, 32));
 
                 var otherPlayers = BuildPlayerStatesSnapshot();
-                var items = GameWorld != null ? GameWorld.GetItemStates() : Array.Empty<ItemState>();
-                var tiles = GameWorld != null ? GameWorld.GetGridTileStates() : Array.Empty<GridTileState>();
-
-                var accept = new JoinAcceptPacket
+                ItemState[] items = GameWorld.GetItemStates();
+                GridTileState[] tiles = GameWorld.GetGridTileStates();
+                Logger.LogNetwork("HOST", $"Sending JoinAcceptPacket with {tiles?.Length ?? 0} tiles, {items?.Length ?? 0} items");
+    
+                JoinAcceptPacket accept = new ()
                 {
                     targetClientId = newId,
                     clientNonce = join.clientNonce,
-                    gameArea = GameWorld != null ? GameWorld.GameArea : Rectangle.Empty,
+                    gameArea = GameWorld.GameArea,
                     playerHitbox = hitbox,
                     playerState = joiningState,
                     playerVelocity = joiningState.ges.velocity,
-                    otherPlayerStates = otherPlayers ?? Array.Empty<PlayerState>(),
+                    otherPlayerStates = otherPlayers,
                     itemStates = items,
                     gridTiles = tiles,
                 };
@@ -423,7 +421,7 @@ public class HostGameState : GameState
                 // Create a server-side representation of the new player so the host can render/update them
                 if (PlayerTexture != null)
                 {
-                    var newPlayable = new PlayableCharacter(
+                    PlayableCharacter newPlayable = new (
                         newId,
                         join.username,
                         PlayerTexture,
@@ -436,14 +434,7 @@ public class HostGameState : GameState
                         true
                     );
                     newPlayable.InitializeTargets();
-                    if (!_players.ContainsKey(newId))
-                    {
-                        _players.Add(newId, newPlayable);
-                    }
-                    else
-                    {
-                        _players[newId] = newPlayable;
-                    }
+                    _players.TryAdd(newId, newPlayable);
                 }
             }
             catch (Exception ex)
@@ -459,7 +450,7 @@ public class HostGameState : GameState
             {
                 var pkt = args.Packet;
                 // Update server-side record for this player if tracked
-                if (_players != null && _players.TryGetValue(pkt.playerId, out var player))
+                if (_players.TryGetValue(pkt.playerId, out PlayableCharacter player))
                 {
                     player.AddBufferedState(pkt.coords, pkt.velocity, _gameTime);
                 }

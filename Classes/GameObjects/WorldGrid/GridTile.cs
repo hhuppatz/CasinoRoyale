@@ -1,4 +1,3 @@
-using CasinoRoyale.Classes.GameObjects.Interfaces;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using IDrawable = CasinoRoyale.Classes.GameObjects.Interfaces.IDrawable;
@@ -32,6 +31,7 @@ public class GridTile(
 
 public enum GridTileType
 {
+    GROUND,
     PLATFORM,
     WOODPLANK,
     ESCALATOR,
